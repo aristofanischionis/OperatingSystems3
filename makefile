@@ -3,7 +3,7 @@ OBJS    = myport.o vessel.o monitor.o port-master.o
 HEADERS = myheader.h
 OUT  	= myport vessel monitor port-master
 CC		= gcc -g
-LIBS    += -lpthread -lrt
+LIBS    += -lpthread
 # -g option enables debugging mode 
 # make the executables
 

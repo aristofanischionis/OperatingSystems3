@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/shm.h>
 #include <unistd.h>
+#include <sys/wait.h> 
 #include "myheader.h"
 
 extern int errno;
@@ -13,10 +14,9 @@ int main(int argc, char *argv[])
 {
     int shmid = 0, err = 0, vesnum = 0, curves = 0;
     pid_t pidPM, pidVessel, pidMonitor;
-    sem_t entranceSM, exitSM;
     char conFile[15], buff[50], s1[10], s2[5];
     char monitorParams[30];
-    FILE *fp, *fp1, *fp2;
+    FILE *fp, *fp1;
     char **vesselParam;
     SharedMemory *myShared;
     //
@@ -65,37 +65,43 @@ int main(int argc, char *argv[])
         }
         if (!strcmp(s1, "capacity1"))
         {
+            sscanf(buff, "%s %s", s1, s2);
             struct_configfile->ca1 = atoi(s2);
             continue;
         }
         if (!strcmp(s1, "capacity2"))
         {
+            sscanf(buff, "%s %s", s1, s2);
             struct_configfile->ca2 = atoi(s2);
             continue;
         }
         if (!strcmp(s1, "capacity3"))
         {
+            sscanf(buff, "%s %s", s1, s2);
             struct_configfile->ca3 = atoi(s2);
             continue;
         }
         if (!strcmp(s1, "cost1"))
         {
+            sscanf(buff, "%s %s", s1, s2);
             struct_configfile->co1 = atoi(s2);
             continue;
         }
         if (!strcmp(s1, "cost2"))
         {
+            sscanf(buff, "%s %s", s1, s2);
             struct_configfile->co2 = atoi(s2);
             continue;
         }
         if (!strcmp(s1, "cost3"))
         {
+            sscanf(buff, "%s %s", s1, s2);
             struct_configfile->co3 = atoi(s2);
             continue;
         }
         if (!strcmp(s1, "./monitor"))
         {
-            printf("the buff in monitor is %s", buff);
+            printf("%s", buff);
             strcpy(monitorParams, buff);
             continue;
         }
@@ -103,11 +109,14 @@ int main(int argc, char *argv[])
         {
             sscanf(buff, "%s %d", s1, &vesnum);
             vesselParam = malloc(vesnum * sizeof(char *));
+            for(int i=0;i<vesnum;i++){
+                vesselParam[i] = malloc(40 * sizeof(char));
+            }
             continue;
         }
         if (!strcmp(s1, "./vessel"))
         {
-            printf("the buff in vessel is %s", buff);
+            printf("%s", buff);
             strcpy(vesselParam[curves], buff);
             curves++;
             continue;
@@ -121,10 +130,8 @@ int main(int argc, char *argv[])
 
     fclose(fp);
 
-    // make public ledger file
-    fp1 = fopen("publicLedger", "a");
     // make log file
-    fp2 = fopen("log", "a");
+    fp1 = fopen("log", "a");
     // make shared memory
     shmid = shmget(IPC_PRIVATE, sizeof(SharedMemory), 0666); /*  Make  shared  memory  segment  */
     if (shmid == (void *)-1)
@@ -141,23 +148,48 @@ int main(int argc, char *argv[])
         perror("Attachment.");
         exit(7);
     }
-
+    
+    // inittialize myShared
     /*  Initialize  the  semaphores. */
 
-    if (sem_init(&entranceSM, 1, 3) != 0)
+    if (sem_init(&(myShared->SmallSem), 1, 1) != 0)
     {
-        perror("Couldn ’t initialize. entranceSM");
+        perror("Couldn ’t initialize.");
         exit(9);
     }
-    if (sem_init(&exitSM, 1, 4) != 0)
+    if (sem_init(&(myShared->MedSem), 1, 1) != 0)
     {
-        perror("Couldn ’t initialize. exitSM");
-        exit(10);
+        perror("Couldn ’t initialize.");
+        exit(9);
     }
-    // inittialize myShared
-
+    if (sem_init(&(myShared->LarSem), 1, 1) != 0)
+    {
+        perror("Couldn ’t initialize.");
+        exit(9);
+    }
+    if (sem_init(&(myShared->StoMsem), 1, 1) != 0)
+    {
+        perror("Couldn ’t initialize.");
+        exit(9);
+    }
+    if (sem_init(&(myShared->StoLsem), 1, 1) != 0)
+    {
+        perror("Couldn ’t initialize.");
+        exit(9);
+    }
+    if (sem_init(&(myShared->MtoLsem), 1, 1) != 0)
+    {
+        perror("Couldn ’t initialize.");
+        exit(9);
+    }
+    // 
+    myShared->curcap1 = struct_configfile->ca1;
+    myShared->curcap2 = struct_configfile->ca2;
+    myShared->curcap3 = struct_configfile->ca3;
+    //
+    strcpy(myShared->logfile, "log");
+    //
     // exec all programs
-    // setsid sh -c 'exec command <> /dev/tty2 >&0 2>&1' to exec in a new tty
     // make sure you fork and exec your childern and then wait for them to finish
     if ((pidPM = fork()) == -1)
     {
@@ -172,6 +204,7 @@ int main(int argc, char *argv[])
         params[1] = "-c";
         params[2] = "charges";
         params[3] = "-s";
+        params[4] = malloc(10 * sizeof(char));
         sprintf(params[4], "%d", shmid);
         params[5] = NULL;
         execvp("./port-master", params);
@@ -183,11 +216,11 @@ int main(int argc, char *argv[])
     }
     if (pidMonitor == 0)
     {
+        char *params[8];
+        sscanf(monitorParams , "%s %s %s %s %s %s", params[0], params[1], params[2], params[3], params[4], params[5]);
         //child
-        char *params[3];
-        strcpy(params[0], monitorParams);
-        sprintf(params[1], "%d", shmid);
-        params[2] = NULL;
+        sprintf(params[6], "%d", shmid);
+        params[7] = NULL;
         execvp("./monitor", params);
     }
     // vessels will get values from the configfile
@@ -201,21 +234,33 @@ int main(int argc, char *argv[])
         if (pidVessel == 0)
         {
             //child
-            char *params[3];
-            strcpy(params[0], vesselParam[i]);
-            sprintf(params[1], "%d", shmid);
-            params[2] = NULL;
+            char *params[12];
+            
+            sscanf(vesselParam[i] , "%s %s %s %s %s %s %s %s %s %s", params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8], params[9]);
+            sprintf(params[10], "%d", shmid);
+            params[11] = NULL;
             execvp("./vessel", params);
         }
     }
     // parent waits for kid processes to finish
     // waits for kids to finish with a semaphore
-
+    // waits for kids to finish
+    pid_t wpid;
+    int status = 0;
+    while ((wpid = wait(&status)) > 0);
     // free malloc'ed space
     free(struct_configfile);
+    for(int i=0;i<vesnum;i++){
+        free(vesselParam[i]);
+    }
+    free(vesselParam);
     // destroy sms
-    sem_destroy(&entranceSM);
-    sem_destroy(&exitSM);
+    sem_destroy(&(myShared->SmallSem));
+    sem_destroy(&(myShared->MedSem));
+    sem_destroy(&(myShared->LarSem));
+    sem_destroy(&(myShared->StoMsem));
+    sem_destroy(&(myShared->StoLsem));
+    sem_destroy(&(myShared->MtoLsem));
     // delete shm seg
     err = shmctl(shmid, IPC_RMID, 0); /*  Remove  segment  */
     if (err == -1)
@@ -224,6 +269,5 @@ int main(int argc, char *argv[])
         printf("Removed. %d\n", (int)(err));
 
     fclose(fp1);
-    fclose(fp2);
     return 0;
 }

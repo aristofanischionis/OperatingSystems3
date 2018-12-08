@@ -1,7 +1,14 @@
 #include <semaphore.h>
 
-struct Vessel {
-
+struct Vessel
+{
+    char name[20];
+    char type;
+    char upgrade;
+    int parkperiod;
+    int mantime;
+    float arrivalTime;
+    float departureTime; 
 };
 
 typedef struct Vessel VesselInfo;
@@ -20,16 +27,26 @@ struct configfile
 };
 typedef struct configfile configfile;
 
+struct PublicLedger {
+
+};
+typedef struct PublicLedger PublicLedger;
+
 struct SharedMemory
 {
-    //entrance and exit semaphores
-    sem_t entranceSM;
-    sem_t exitSM;
-    // types
-    configfile conf;
+    //entrance and exit semaphores, maybe just one for movement
+    sem_t SmallSem;
+    sem_t MedSem;
+    sem_t LarSem;
+    sem_t StoMsem;
+    sem_t StoLsem;
+    sem_t MtoLsem;
+    //
+    int curcap1;
+    int curcap2;
+    int curcap3;
     // //
-    char *publicLedger;
-    char *logfile;
+    char logfile[20];
     VesselInfo ship;
 };
 typedef struct SharedMemory SharedMemory;
