@@ -7,3 +7,13 @@ capacity3 8
 cost1 50
 cost2 75
 cost3 120
+./monitor -d 10 -t 30 -s
+vesselnum 8
+./vessel -t S -u M -p 20 -m 10 -s
+./vessel -t M -u M -p 15 -m 15 -s
+./vessel -t L -u L -p 25 -m 40 -s
+./vessel -t M -u L -p 30 -m 10 -s
+./vessel -t L -u L -p 25 -m 30 -s
+./vessel -t S -u L -p 40 -m 10 -s
+./vessel -t S -u M -p 15 -m 15 -s
+./vessel -t S -u S -p 10 -m 20 -s

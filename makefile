@@ -1,6 +1,6 @@
 #Got this from the official Website of Alexis Delis
 OBJS    = myport.o vessel.o monitor.o port-master.o
-HEADERS = vessel.h
+HEADERS = myheader.h
 OUT  	= myport vessel monitor port-master
 CC		= gcc -g
 LIBS    += -lpthread -lrt
@@ -9,16 +9,16 @@ LIBS    += -lpthread -lrt
 
 all : $(OUT)
 
-myport : myport.o vessel.h
+myport : myport.o myheader.h
 	$(CC) -o myport myport.c $(LIBS) $(HEADERS)
 
-vessel : vessel.o vessel.h
+vessel : vessel.o myheader.h
 	$(CC) -o vessel vessel.c $(LIBS) $(HEADERS)
 
-monitor : monitor.o
+monitor : monitor.o myheader.h
 	$(CC) -o monitor monitor.c $(LIBS) $(HEADERS)
 
-port-master : port-master.o
+port-master : port-master.o myheader.h
 	$(CC) -o port-master port-master.c $(LIBS) $(HEADERS)
 
 # clean house
