@@ -11,6 +11,7 @@
 extern int errno;
 
 int main(int argc, char *argv[]){
+    printf("this is a vessel %d\n",argc);
     int shmid;
     VesselInfo *myvessel;
     SharedMemory *myShared;
@@ -20,6 +21,10 @@ int main(int argc, char *argv[]){
     }
     char name[20];
     sprintf(name, "vessel_%d", getpid());
+    //
+    myvessel = malloc(sizeof(VesselInfo));
+    myShared = malloc(sizeof(SharedMemory));
+    //
     strcpy(myvessel->name, name);
     if (!strcmp(argv[1], "-t"))
     {
@@ -69,6 +74,10 @@ int main(int argc, char *argv[]){
         perror("Attachment.");
         exit(3);
     }
-    printf("Finished successfully");
+    // free malloc'd space
+    free(myShared);
+    free(myvessel);
+
+    exit(0);
     return 0;
 }

@@ -101,7 +101,6 @@ int main(int argc, char *argv[])
         }
         if (!strcmp(s1, "./monitor"))
         {
-            printf("%s", buff);
             strcpy(monitorParams, buff);
             continue;
         }
@@ -116,7 +115,6 @@ int main(int argc, char *argv[])
         }
         if (!strcmp(s1, "./vessel"))
         {
-            printf("%s", buff);
             strcpy(vesselParam[curves], buff);
             curves++;
             continue;
@@ -154,32 +152,32 @@ int main(int argc, char *argv[])
 
     if (sem_init(&(myShared->SmallSem), 1, 1) != 0)
     {
-        perror("Couldn ’t initialize.");
+        perror("Couldn’t initialize.");
         exit(9);
     }
     if (sem_init(&(myShared->MedSem), 1, 1) != 0)
     {
-        perror("Couldn ’t initialize.");
+        perror("Couldn’t initialize.");
         exit(9);
     }
     if (sem_init(&(myShared->LarSem), 1, 1) != 0)
     {
-        perror("Couldn ’t initialize.");
+        perror("Couldn’t initialize.");
         exit(9);
     }
     if (sem_init(&(myShared->StoMsem), 1, 1) != 0)
     {
-        perror("Couldn ’t initialize.");
+        perror("Couldn’t initialize.");
         exit(9);
     }
     if (sem_init(&(myShared->StoLsem), 1, 1) != 0)
     {
-        perror("Couldn ’t initialize.");
+        perror("Couldn’t initialize.");
         exit(9);
     }
     if (sem_init(&(myShared->MtoLsem), 1, 1) != 0)
     {
-        perror("Couldn ’t initialize.");
+        perror("Couldn’t initialize.");
         exit(9);
     }
     // 
@@ -209,6 +207,9 @@ int main(int argc, char *argv[])
         params[5] = NULL;
         execvp("./port-master", params);
     }
+    else{
+        wait(NULL);
+    }
     if ((pidMonitor = fork()) == -1)
     {
         perror(" fork ");
@@ -217,11 +218,17 @@ int main(int argc, char *argv[])
     if (pidMonitor == 0)
     {
         char *params[8];
+        for(int j =0 ; j < 7;j++){
+            params[j] = malloc(15 * sizeof(char));
+        }
         sscanf(monitorParams , "%s %s %s %s %s %s", params[0], params[1], params[2], params[3], params[4], params[5]);
         //child
         sprintf(params[6], "%d", shmid);
         params[7] = NULL;
         execvp("./monitor", params);
+    }
+    else {
+        wait(NULL);
     }
     // vessels will get values from the configfile
     for (int i = 0; i < vesnum; i++)
@@ -233,21 +240,30 @@ int main(int argc, char *argv[])
         }
         if (pidVessel == 0)
         {
-            //child
             char *params[12];
-            
+            for(int j =0 ; j < 11;j++){
+                params[j] = malloc(15 * sizeof(char));
+            }
             sscanf(vesselParam[i] , "%s %s %s %s %s %s %s %s %s %s", params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8], params[9]);
             sprintf(params[10], "%d", shmid);
             params[11] = NULL;
             execvp("./vessel", params);
         }
+        else{
+            wait(NULL);
+            continue;
+        }
     }
     // parent waits for kid processes to finish
     // waits for kids to finish with a semaphore
     // waits for kids to finish
-    pid_t wpid;
-    int status = 0;
-    while ((wpid = wait(&status)) > 0);
+    // pid_t wpid;
+    // int status = 0;
+    // while ((wpid = wait(&status)) > 0);
+    for(int i=0;i< vesnum+2;i++){
+        wait(NULL);
+    }
+    printf("All Kids exited\n");
     // free malloc'ed space
     free(struct_configfile);
     for(int i=0;i<vesnum;i++){
@@ -266,7 +282,7 @@ int main(int argc, char *argv[])
     if (err == -1)
         perror("Removal.");
     else
-        printf("Removed. %d\n", (int)(err));
+        printf("Removed Shared Memory.\n");
 
     fclose(fp1);
     return 0;

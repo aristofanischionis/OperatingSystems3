@@ -8,5 +8,7 @@
 extern int errno;
 
 int main(int argc, char *argv[]){
+    printf("hi im monitor %d\n", argc);
+    exit(0);
     return 0;
 }

@@ -11,5 +11,7 @@
 extern int errno;
 
 int main(int argc, char *argv[]){
+    printf("hi im port master %d\n", argc);
+    exit(0);
     return 0;
 }
