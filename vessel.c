@@ -76,11 +76,14 @@ int main(int argc, char *argv[]){
     // begin doing stuff
     // ask for movement in the port
     sem_wait(&(myShared->portMovement));
+    printf("I went through the port movement sem\n");
     // ask for the semaphores according to its type and place info in the shm
     if(myvessel->type == 'S'){
+        printf("I went through the small sem\n");
         // wait for the small semaphore
         sem_wait(&(myShared->SmallSem));
         if(myvessel->upgrade == 'M'){
+            printf("I went through the stom sem\n");
             sem_wait(&(myShared->StoMsem));
         }
         else if (myvessel->upgrade == 'L'){

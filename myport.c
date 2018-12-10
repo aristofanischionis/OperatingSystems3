@@ -257,7 +257,7 @@ int main(int argc, char *argv[])
             execvp("./vessel", params);
         }
         else{
-            wait(NULL);
+            // wait(NULL);
             continue;
         }
     }

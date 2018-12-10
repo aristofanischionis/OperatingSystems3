@@ -33,13 +33,12 @@ int main(int argc, char *argv[]){
     }
     fp = fopen(chargesFile, "r");
     while(fscanf(fp, "%s %d", type, &cost) == 2){
-        printf(" type %s, cost %d \n", type, cost);
         if(!strcmp(type, "Small")) Scost = cost;
         else if(!strcmp(type, "Medium")) Mcost = cost;
         else if(!strcmp(type, "Large")) Lcost = cost;
     }
     printf("costs: %d , %d , %d  \n",Scost, Mcost, Lcost );
-
+    
 
 
 

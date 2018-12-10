@@ -1,9 +1,9 @@
 type1 S
 type2 M
 type3 L
-capacity1 10
-capacity2 15
-capacity3 8
+capacity1 2
+capacity2 2
+capacity3 3
 cost1 50
 cost2 75
 cost3 120
