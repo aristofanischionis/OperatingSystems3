@@ -23,7 +23,6 @@ int main(int argc, char *argv[]){
     sprintf(name, "vessel_%d", getpid());
     //
     myvessel = malloc(sizeof(VesselInfo));
-    myShared = malloc(sizeof(SharedMemory));
     //
     strcpy(myvessel->name, name);
     if (!strcmp(argv[1], "-t"))
@@ -75,7 +74,6 @@ int main(int argc, char *argv[]){
         exit(3);
     }
     // free malloc'd space
-    free(myShared);
     free(myvessel);
 
     exit(0);

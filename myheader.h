@@ -28,9 +28,11 @@ struct configfile
 typedef struct configfile configfile;
 
 struct PublicLedger {
-
+    VesselInfo *CurVessels;
+    // piasmenh h oxi
 };
 typedef struct PublicLedger PublicLedger;
+// public ledger ena s ena m ena l
 
 struct SharedMemory
 {
@@ -42,11 +44,12 @@ struct SharedMemory
     sem_t StoLsem;
     sem_t MtoLsem;
     //
-    int curcap1;
-    int curcap2;
-    int curcap3;
+    // int curcap1;
+    // int curcap2;
+    // int curcap3;
     // //
     char logfile[20];
-    VesselInfo ship;
+    VesselInfo shipToCome;
+    PublicLedger curState;
 };
 typedef struct SharedMemory SharedMemory;

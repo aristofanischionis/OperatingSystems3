@@ -127,11 +127,12 @@ int main(int argc, char *argv[])
     }
 
     fclose(fp);
-
+    // find all the capacity
+    int sumCa = struct_configfile->ca1 + struct_configfile->ca2 + struct_configfile->ca3;
     // make log file
     fp1 = fopen("log", "a");
     // make shared memory
-    shmid = shmget(IPC_PRIVATE, sizeof(SharedMemory), 0666); /*  Make  shared  memory  segment  */
+    shmid = shmget(IPC_PRIVATE, sizeof(SharedMemory) + sumCa*sizeof(VesselInfo), IPC_CREAT|IPC_EXCL|0666); /*  Make  shared  memory  segment  */
     if (shmid == (void *)-1)
     {
         perror("Creation");
@@ -181,9 +182,9 @@ int main(int argc, char *argv[])
         exit(9);
     }
     // 
-    myShared->curcap1 = struct_configfile->ca1;
-    myShared->curcap2 = struct_configfile->ca2;
-    myShared->curcap3 = struct_configfile->ca3;
+    // myShared->curcap1 = struct_configfile->ca1;
+    // myShared->curcap2 = struct_configfile->ca2;
+    // myShared->curcap3 = struct_configfile->ca3;
     //
     strcpy(myShared->logfile, "log");
     //
@@ -255,11 +256,6 @@ int main(int argc, char *argv[])
         }
     }
     // parent waits for kid processes to finish
-    // waits for kids to finish with a semaphore
-    // waits for kids to finish
-    // pid_t wpid;
-    // int status = 0;
-    // while ((wpid = wait(&status)) > 0);
     for(int i=0;i< vesnum+2;i++){
         wait(NULL);
     }
