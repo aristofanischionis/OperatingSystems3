@@ -28,15 +28,19 @@ struct configfile
 typedef struct configfile configfile;
 
 struct PublicLedger {
-    VesselInfo *CurVessels;
-    // piasmenh h oxi
+    // arrays with positions as many as the capacity of the port ca1,ca2,ca3
+    VesselInfo *SmallVessels;
+    VesselInfo *MediumVessels;
+    VesselInfo *LargeVessels;
+    char history[20]; // name of history file to open for append
 };
 typedef struct PublicLedger PublicLedger;
 // public ledger ena s ena m ena l
 
 struct SharedMemory
 {
-    //entrance and exit semaphores, maybe just one for movement
+    //semaphores
+    sem_t portMovement;
     sem_t SmallSem;
     sem_t MedSem;
     sem_t LarSem;
@@ -44,12 +48,12 @@ struct SharedMemory
     sem_t StoLsem;
     sem_t MtoLsem;
     //
-    // int curcap1;
-    // int curcap2;
-    // int curcap3;
+    int curcap1;
+    int curcap2;
+    int curcap3;
     // //
     char logfile[20];
     VesselInfo shipToCome;
-    PublicLedger curState;
+    PublicLedger pubLedger;
 };
 typedef struct SharedMemory SharedMemory;

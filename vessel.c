@@ -73,6 +73,8 @@ int main(int argc, char *argv[]){
         perror("Attachment.");
         exit(3);
     }
+    // begin doing stuff
+
     // free malloc'd space
     free(myvessel);
 

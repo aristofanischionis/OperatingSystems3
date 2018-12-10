@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
     pid_t pidPM, pidVessel, pidMonitor;
     char conFile[15], buff[50], s1[10], s2[5];
     char monitorParams[30];
-    FILE *fp, *fp1;
+    FILE *fp, *fp1, *fp2;
     char **vesselParam;
     SharedMemory *myShared;
     //
@@ -126,11 +126,12 @@ int main(int argc, char *argv[])
         }
     }
 
-    fclose(fp);
     // find all the capacity
     int sumCa = struct_configfile->ca1 + struct_configfile->ca2 + struct_configfile->ca3;
     // make log file
     fp1 = fopen("log", "a");
+    // make history file
+    fp2 = fopen("history", "a");
     // make shared memory
     shmid = shmget(IPC_PRIVATE, sizeof(SharedMemory) + sumCa*sizeof(VesselInfo), IPC_CREAT|IPC_EXCL|0666); /*  Make  shared  memory  segment  */
     if (shmid == (void *)-1)
@@ -149,6 +150,9 @@ int main(int argc, char *argv[])
     }
     
     // inittialize myShared
+    myShared->curcap1 = struct_configfile->ca1;
+    myShared->curcap2 = struct_configfile->ca2;
+    myShared->curcap3 = struct_configfile->ca3;
     /*  Initialize  the  semaphores. */
 
     if (sem_init(&(myShared->SmallSem), 1, 1) != 0)
@@ -181,10 +185,8 @@ int main(int argc, char *argv[])
         perror("Couldn’t initialize.");
         exit(9);
     }
-    // 
-    // myShared->curcap1 = struct_configfile->ca1;
-    // myShared->curcap2 = struct_configfile->ca2;
-    // myShared->curcap3 = struct_configfile->ca3;
+    // init sharedmem
+    
     //
     strcpy(myShared->logfile, "log");
     //
@@ -275,11 +277,11 @@ int main(int argc, char *argv[])
     sem_destroy(&(myShared->MtoLsem));
     // delete shm seg
     err = shmctl(shmid, IPC_RMID, 0); /*  Remove  segment  */
-    if (err == -1)
-        perror("Removal.");
-    else
-        printf("Removed Shared Memory.\n");
+    if (err == -1) perror("Removal.");
+    else printf("Removed Shared Memory.\n");
 
+    fclose(fp);
     fclose(fp1);
+    fclose(fp2);
     return 0;
 }
