@@ -185,8 +185,12 @@ int main(int argc, char *argv[])
         perror("Couldn’t initialize.");
         exit(9);
     }
-    // init sharedmem
-    
+    if (sem_init(&(myShared->portMovement), 1, 1) != 0)
+    {
+        perror("Couldn’t initialize.");
+        exit(9);
+    }
+    //    
     //
     strcpy(myShared->logfile, "log");
     //

@@ -8,9 +8,9 @@ struct Vessel
     int parkperiod;
     int mantime;
     float arrivalTime;
-    float departureTime; 
+    float departureTime;
+    int stillINport;
 };
-
 typedef struct Vessel VesselInfo;
 
 struct configfile
@@ -28,6 +28,7 @@ struct configfile
 typedef struct configfile configfile;
 
 struct PublicLedger {
+    // current state of the port
     // arrays with positions as many as the capacity of the port ca1,ca2,ca3
     VesselInfo *SmallVessels;
     VesselInfo *MediumVessels;
@@ -35,7 +36,6 @@ struct PublicLedger {
     char history[20]; // name of history file to open for append
 };
 typedef struct PublicLedger PublicLedger;
-// public ledger ena s ena m ena l
 
 struct SharedMemory
 {

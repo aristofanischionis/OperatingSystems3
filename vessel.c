@@ -74,7 +74,33 @@ int main(int argc, char *argv[]){
         exit(3);
     }
     // begin doing stuff
-
+    // ask for movement in the port
+    sem_wait(&(myShared->portMovement));
+    // ask for the semaphores according to its type and place info in the shm
+    if(myvessel->type == 'S'){
+        // wait for the small semaphore
+        sem_wait(&(myShared->SmallSem));
+        if(myvessel->upgrade == 'M'){
+            sem_wait(&(myShared->StoMsem));
+        }
+        else if (myvessel->upgrade == 'L'){
+            sem_wait(&(myShared->StoLsem));
+        }
+        // no upgrade given
+    }
+    if(myvessel->type == 'M'){
+        // wait for the medium semaphore
+        sem_wait(&(myShared->MedSem));
+        if(myvessel->upgrade == 'L'){
+            sem_wait(&(myShared->MtoLsem));
+        }
+        // no upgrade given
+    }
+    if(myvessel->type == 'L'){
+        // wait for the large semaphore
+        sem_wait(&(myShared->LarSem));
+        
+    }
     // free malloc'd space
     free(myvessel);
 
