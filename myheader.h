@@ -1,5 +1,5 @@
 #include <semaphore.h>
-
+// #define MAX 50
 struct Vessel
 {
     char name[20];
@@ -44,6 +44,9 @@ struct SharedMemory
     sem_t SmallSem;
     sem_t MedSem;
     sem_t LarSem;
+    sem_t RequestEntry;
+    sem_t OK;
+    sem_t exit;
     // sem_t StoMsem;
     // sem_t StoLsem;
     // sem_t MtoLsem;

@@ -5,15 +5,25 @@
 #include <string.h>
 #include <sys/shm.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/wait.h> 
 #include "myheader.h"
 
+pid_t pidPM;
+
+void handle_sigint(int sig) 
+{ 
+    signal(SIGINT, handle_sigint);
+    printf("Caught signal for port-master termination\n");
+    kill(sig, pidPM);
+}
 extern int errno;
 
 int main(int argc, char *argv[])
 {
+    signal(SIGINT, handle_sigint);
     int shmid = 0, err = 0, vesnum = 0, curves = 0;
-    pid_t pidPM, pidVessel, pidMonitor;
+    pid_t pidVessel, pidMonitor;
     char conFile[15], buff[50], s1[10], s2[5];
     char monitorParams[30];
     FILE *fp, *fp1, *fp2;
@@ -127,13 +137,13 @@ int main(int argc, char *argv[])
     }
 
     // find all the capacity
-    int sumCa = struct_configfile->ca1 + struct_configfile->ca2 + struct_configfile->ca3;
+    int sumCa = struct_configfile->ca1 + struct_configfile->ca2 + struct_configfile->ca3 +1;
     // make log file
     fp1 = fopen("log", "a");
     // make history file
     fp2 = fopen("history", "a");
     // make shared memory
-    shmid = shmget(IPC_PRIVATE, sizeof(SharedMemory) + sumCa*sizeof(VesselInfo), IPC_CREAT|IPC_EXCL|0666); /*  Make  shared  memory  segment  */
+    shmid = shmget(IPC_PRIVATE, sizeof(SharedMemory) + sumCa * sizeof(VesselInfo), IPC_CREAT|IPC_EXCL|0666); /*  Make  shared  memory  segment  */
     if (shmid == (void *)-1)
     {
         perror("Creation");
@@ -155,36 +165,36 @@ int main(int argc, char *argv[])
     myShared->curcap3 = struct_configfile->ca3;
     /*  Initialize  the  semaphores. */
 
-    if (sem_init(&(myShared->SmallSem), 1, myShared->curcap1) != 0)
+    if (sem_init(&(myShared->SmallSem), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
-    if (sem_init(&(myShared->MedSem), 1, myShared->curcap2) != 0)
+    if (sem_init(&(myShared->MedSem), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
-    if (sem_init(&(myShared->LarSem), 1, myShared->curcap3) != 0)
+    if (sem_init(&(myShared->LarSem), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
-    // if (sem_init(&(myShared->StoMsem), 1, 1) != 0)
-    // {
-    //     perror("Couldn’t initialize.");
-    //     exit(9);
-    // }
-    // if (sem_init(&(myShared->StoLsem), 1, 1) != 0)
-    // {
-    //     perror("Couldn’t initialize.");
-    //     exit(9);
-    // }
-    // if (sem_init(&(myShared->MtoLsem), 1, 1) != 0)
-    // {
-    //     perror("Couldn’t initialize.");
-    //     exit(9);
-    // }
+    if (sem_init(&(myShared->RequestEntry), 1, 1) != 0)
+    {
+        perror("Couldn’t initialize.");
+        exit(9);
+    }
+    if (sem_init(&(myShared->OK), 1, 1) != 0)
+    {
+        perror("Couldn’t initialize.");
+        exit(9);
+    }
+    if (sem_init(&(myShared->exit), 1, 1) != 0)
+    {
+        perror("Couldn’t initialize.");
+        exit(9);
+    }
     if (sem_init(&(myShared->portMovement), 1, 1) != 0)
     {
         perror("Couldn’t initialize.");
@@ -276,9 +286,10 @@ int main(int argc, char *argv[])
     sem_destroy(&(myShared->SmallSem));
     sem_destroy(&(myShared->MedSem));
     sem_destroy(&(myShared->LarSem));
-    // sem_destroy(&(myShared->StoMsem));
-    // sem_destroy(&(myShared->StoLsem));
-    // sem_destroy(&(myShared->MtoLsem));
+    sem_destroy(&(myShared->RequestEntry));
+    sem_destroy(&(myShared->portMovement));
+    sem_destroy(&(myShared->OK));
+    sem_destroy(&(myShared->exit));
     // delete shm seg
     err = shmctl(shmid, IPC_RMID, 0); /*  Remove  segment  */
     if (err == -1) perror("Removal.");
