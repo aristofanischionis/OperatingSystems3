@@ -38,7 +38,8 @@ int main(int argc, char *argv[]){
         else if(!strcmp(type, "Large")) Lcost = cost;
     }
     printf("costs: %d , %d , %d  \n",Scost, Mcost, Lcost );
-    
+    // port-master is in charge of portMovement sem and responsible to increment it when 
+    // a ship can move in the port
 
 
 

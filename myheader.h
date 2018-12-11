@@ -44,9 +44,9 @@ struct SharedMemory
     sem_t SmallSem;
     sem_t MedSem;
     sem_t LarSem;
-    sem_t StoMsem;
-    sem_t StoLsem;
-    sem_t MtoLsem;
+    // sem_t StoMsem;
+    // sem_t StoLsem;
+    // sem_t MtoLsem;
     //
     int curcap1;
     int curcap2;

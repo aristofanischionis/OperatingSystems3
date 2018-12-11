@@ -79,31 +79,74 @@ int main(int argc, char *argv[]){
     printf("I went through the port movement sem\n");
     // ask for the semaphores according to its type and place info in the shm
     if(myvessel->type == 'S'){
-        printf("I went through the small sem\n");
         // wait for the small semaphore
         sem_wait(&(myShared->SmallSem));
-        if(myvessel->upgrade == 'M'){
-            printf("I went through the stom sem\n");
-            sem_wait(&(myShared->StoMsem));
-        }
-        else if (myvessel->upgrade == 'L'){
-            sem_wait(&(myShared->StoLsem));
-        }
+        printf("I went through the small sem %s\n", myvessel->name);
+        // if(myvessel->upgrade == 'M'){
+        //     printf("I went through the stom sem\n");
+        //     sem_wait(&(myShared->StoMsem));
+        // }
+        // else if (myvessel->upgrade == 'L'){
+        //     sem_wait(&(myShared->StoLsem));
+        // }
         // no upgrade given
+        // dostuff
+        // moving in the port in order to park
+        sleep(myvessel->mantime); 
+        // stopped moving
+        sem_post(&(myShared->portMovement));
+        // stays in the port
+        sleep(myvessel->parkperiod);
+        // asks how much should I pay?
+        sem_wait(&(myShared->portMovement));
+        // time to move from port
+        sleep(myvessel->mantime);
+        //let the others know I 'm done using the port
+        sem_post(&(myShared->portMovement));
     }
     if(myvessel->type == 'M'){
         // wait for the medium semaphore
         sem_wait(&(myShared->MedSem));
-        if(myvessel->upgrade == 'L'){
-            sem_wait(&(myShared->MtoLsem));
-        }
+        printf("I went through the med sem %s\n", myvessel->name);
+        // if(myvessel->upgrade == 'L'){
+        //     sem_wait(&(myShared->MtoLsem));
+        // }
         // no upgrade given
+        // dostuff
+        // moving in the port in order to park
+        sleep(myvessel->mantime); 
+        // stopped moving
+        sem_post(&(myShared->portMovement));
+        // stays in the port
+        sleep(myvessel->parkperiod);
+        // asks how much should I pay?
+        sem_wait(&(myShared->portMovement));
+        // time to move from port
+        sleep(myvessel->mantime);
+        //let the others know I 'm done using the port
+        sem_post(&(myShared->portMovement));
     }
     if(myvessel->type == 'L'){
         // wait for the large semaphore
         sem_wait(&(myShared->LarSem));
+        printf("I went through the large sem %s\n", myvessel->name);
+        // dostuff
+        // moving in the port in order to park
+        sleep(myvessel->mantime); 
+        // stopped moving
+        sem_post(&(myShared->portMovement));
+        // stays in the port
+        sleep(myvessel->parkperiod);
+        // asks how much should I pay?
+        sem_wait(&(myShared->portMovement));
+        // time to move from port
+        sleep(myvessel->mantime);
+        //let the others know I 'm done using the port
+        sem_post(&(myShared->portMovement));
         
     }
+
+    // sem_post(&(myShared->portMovement));
     // free malloc'd space
     free(myvessel);
 

@@ -155,36 +155,36 @@ int main(int argc, char *argv[])
     myShared->curcap3 = struct_configfile->ca3;
     /*  Initialize  the  semaphores. */
 
-    if (sem_init(&(myShared->SmallSem), 1, 1) != 0)
+    if (sem_init(&(myShared->SmallSem), 1, myShared->curcap1) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
-    if (sem_init(&(myShared->MedSem), 1, 1) != 0)
+    if (sem_init(&(myShared->MedSem), 1, myShared->curcap2) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
-    if (sem_init(&(myShared->LarSem), 1, 1) != 0)
+    if (sem_init(&(myShared->LarSem), 1, myShared->curcap3) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
-    if (sem_init(&(myShared->StoMsem), 1, 1) != 0)
-    {
-        perror("Couldn’t initialize.");
-        exit(9);
-    }
-    if (sem_init(&(myShared->StoLsem), 1, 1) != 0)
-    {
-        perror("Couldn’t initialize.");
-        exit(9);
-    }
-    if (sem_init(&(myShared->MtoLsem), 1, 1) != 0)
-    {
-        perror("Couldn’t initialize.");
-        exit(9);
-    }
+    // if (sem_init(&(myShared->StoMsem), 1, 1) != 0)
+    // {
+    //     perror("Couldn’t initialize.");
+    //     exit(9);
+    // }
+    // if (sem_init(&(myShared->StoLsem), 1, 1) != 0)
+    // {
+    //     perror("Couldn’t initialize.");
+    //     exit(9);
+    // }
+    // if (sem_init(&(myShared->MtoLsem), 1, 1) != 0)
+    // {
+    //     perror("Couldn’t initialize.");
+    //     exit(9);
+    // }
     if (sem_init(&(myShared->portMovement), 1, 1) != 0)
     {
         perror("Couldn’t initialize.");
@@ -276,9 +276,9 @@ int main(int argc, char *argv[])
     sem_destroy(&(myShared->SmallSem));
     sem_destroy(&(myShared->MedSem));
     sem_destroy(&(myShared->LarSem));
-    sem_destroy(&(myShared->StoMsem));
-    sem_destroy(&(myShared->StoLsem));
-    sem_destroy(&(myShared->MtoLsem));
+    // sem_destroy(&(myShared->StoMsem));
+    // sem_destroy(&(myShared->StoLsem));
+    // sem_destroy(&(myShared->MtoLsem));
     // delete shm seg
     err = shmctl(shmid, IPC_RMID, 0); /*  Remove  segment  */
     if (err == -1) perror("Removal.");
