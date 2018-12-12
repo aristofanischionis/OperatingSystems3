@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "vessel.h": "c"
+        "vessel.h": "c",
+        "string.h": "c"
     }
 }

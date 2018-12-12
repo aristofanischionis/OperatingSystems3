@@ -135,7 +135,6 @@ int main(int argc, char *argv[])
             return 4;
         }
     }
-
     // find all the capacity
     int sumCa = struct_configfile->ca1 + struct_configfile->ca2 + struct_configfile->ca3 +1;
     // make log file
@@ -160,49 +159,73 @@ int main(int argc, char *argv[])
     }
     
     // inittialize myShared
-    myShared->curcap1 = struct_configfile->ca1;
-    myShared->curcap2 = struct_configfile->ca2;
-    myShared->curcap3 = struct_configfile->ca3;
+    SharedMemory *node = (SharedMemory*) myShared;
+    VesselInfo *nodeShip = malloc(sizeof(VesselInfo));
+    strcpy(nodeShip->name , "noname");
+    nodeShip->type = 'N';
+    nodeShip->upgrade = 'N';
+    nodeShip->parkperiod = 0;
+    nodeShip->mantime = 0;
+    nodeShip->arrivalTime = 0.0;
+    nodeShip->departureTime = 0.0;
+    nodeShip->status = 0;
+    node->shipToCome = *nodeShip;
+    //
+    // PublicLedger *nodeledg = malloc(sizeof(PublicLedger) + sumCa*sizeof(VesselInfo));
+    // node->pubLedger = *nodeledg;
+    // node->pubLedger.SmallVessels = (VesselInfo *) myShared + sizeof(SharedMemory);
+    // node->pubLedger.MediumVessels = (VesselInfo *) myShared + sizeof(SharedMemory);
+    // node->pubLedger.LargeVessels = (VesselInfo *) myShared + sizeof(SharedMemory);
+    node->pubLedger.SmallVessels = (char *)myShared + sizeof(SharedMemory);
+    node->pubLedger.MediumVessels = (char *)myShared + sizeof(SharedMemory);
+    node->pubLedger.LargeVessels = (char *)myShared + sizeof(SharedMemory);
+    // node->pubLedger.MediumVessels = node->pubLedger.SmallVessels + struct_configfile->ca2;
+    // node->pubLedger.LargeVessels = node->pubLedger.MediumVessels + struct_configfile->ca3;
+    strcpy(node->pubLedger.history , "history.txt");
+    for(int i=0;i<struct_configfile->ca1 ; i++){
+        node->pubLedger.SmallVessels[i] = *nodeShip;
+    }
+    for(int i=0;i<struct_configfile->ca2 ; i++){
+        node->pubLedger.MediumVessels[i] = *nodeShip;
+    }
+    for(int i=0;i<struct_configfile->ca3 ; i++){
+        node->pubLedger.LargeVessels[i] = *nodeShip;
+    }
+    //
+    node->curcap1 = struct_configfile->ca1;
+    node->curcap2 = struct_configfile->ca2;
+    node->curcap3 = struct_configfile->ca3;
+    printf("myyportttt cap1 %d", node->curcap1 );
     /*  Initialize  the  semaphores. */
 
-    if (sem_init(&(myShared->SmallSem), 1, 0) != 0)
+    if (sem_init(&(node->SmallSem), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
-    if (sem_init(&(myShared->MedSem), 1, 0) != 0)
+    if (sem_init(&(node->MedSem), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
-    if (sem_init(&(myShared->LarSem), 1, 0) != 0)
+    if (sem_init(&(node->LarSem), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
-    if (sem_init(&(myShared->RequestEntry), 1, 1) != 0)
+    if (sem_init(&(node->Request), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
-    if (sem_init(&(myShared->OK), 1, 1) != 0)
-    {
-        perror("Couldn’t initialize.");
-        exit(9);
-    }
-    if (sem_init(&(myShared->exit), 1, 1) != 0)
-    {
-        perror("Couldn’t initialize.");
-        exit(9);
-    }
-    if (sem_init(&(myShared->portMovement), 1, 1) != 0)
+    if (sem_init(&(node->OK), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
     //    
     //
-    strcpy(myShared->logfile, "log");
+    strcpy(node->logfile, "log");
     //
     // exec all programs
     // make sure you fork and exec your childern and then wait for them to finish
@@ -224,9 +247,9 @@ int main(int argc, char *argv[])
         params[5] = NULL;
         execvp("./port-master", params);
     }
-    else{
-        wait(NULL);
-    }
+    // else{
+    //     wait(NULL);
+    // }
     if ((pidMonitor = fork()) == -1)
     {
         perror(" fork ");
@@ -244,9 +267,9 @@ int main(int argc, char *argv[])
         params[7] = NULL;
         execvp("./monitor", params);
     }
-    else {
-        wait(NULL);
-    }
+    // else {
+    //     wait(NULL);
+    // }
     // vessels will get values from the configfile
     for (int i = 0; i < vesnum; i++)
     {
@@ -275,6 +298,7 @@ int main(int argc, char *argv[])
     for(int i=0;i< vesnum+2;i++){
         wait(NULL);
     }
+    // while(1) sleep(1);
     printf("All Kids exited\n");
     // free malloc'ed space
     free(struct_configfile);
@@ -282,14 +306,14 @@ int main(int argc, char *argv[])
         free(vesselParam[i]);
     }
     free(vesselParam);
+    free(nodeShip);
+    // free(nodeledg);
     // destroy sms
     sem_destroy(&(myShared->SmallSem));
     sem_destroy(&(myShared->MedSem));
     sem_destroy(&(myShared->LarSem));
-    sem_destroy(&(myShared->RequestEntry));
-    sem_destroy(&(myShared->portMovement));
+    sem_destroy(&(myShared->Request));
     sem_destroy(&(myShared->OK));
-    sem_destroy(&(myShared->exit));
     // delete shm seg
     err = shmctl(shmid, IPC_RMID, 0); /*  Remove  segment  */
     if (err == -1) perror("Removal.");

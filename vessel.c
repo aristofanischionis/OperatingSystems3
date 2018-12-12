@@ -13,31 +13,40 @@ extern int errno;
 void vesselJob(VesselInfo *myvessel, SharedMemory *myShared)
 {
     // wait for being able to move in the port
-    sem_wait(&(myShared->portMovement));
-    printf("I went through the port movement sem %s\n", myvessel->name);
+    // sem_wait(&(myShared->Request));
+    // printf("my req to enter was accepted %c\n", myvessel->type);
+    // memcpy(&(myShared->shipToCome), myvessel, sizeof(VesselInfo));
     // dostuff
     // moving in the port in order to park
     sleep(myvessel->mantime);
-    // stopped moving
-    sem_post(&(myShared->portMovement));
+    // stopped moving so give permission to someone else to do work
+    sem_post(&(myShared->Request));
     // stays in the port
     sleep(myvessel->parkperiod);
     // asks how much should I pay?
     // I now want to exit
-    sem_post(&(myShared->exit));
+    int req;
+    sem_getvalue(&(myShared->Request), &req);
+    printf("I want to exitVSrequest is -> %d\n", req);
+    sem_getvalue(&(myShared->OK), &req);
+    printf("I want to exitVSok is -> %d\n", req);
+    sem_wait(&(myShared->Request));
+    myvessel->status = EXIT;
+    memcpy(&(myShared->shipToCome), myvessel, sizeof(VesselInfo));
+    sem_post(&(myShared->OK));
+    //send OK i've sent my info to port master and wait for him to respond that he read it too
+    sem_wait(&(myShared->OK));
     // wait till you can leave port
-    sem_wait(&(myShared->portMovement));
     // time to move from port
     sleep(myvessel->mantime);
     //let the others know I 'm done using the port
-    sem_post(&(myShared->portMovement));
+    sem_post(&(myShared->Request));
     return;
 }
 
 int main(int argc, char *argv[])
 {
     printf("this is a vessel %d\n", argc);
-    printf("HI THERE");
     int shmid;
     VesselInfo *myvessel;
     SharedMemory *myShared;
@@ -46,7 +55,6 @@ int main(int argc, char *argv[])
         printf("not provided the right number of params %d", argc);
         return 1;
     }    
-    printf("HI THERE");
     //
     myvessel = malloc(sizeof(VesselInfo));
     //
@@ -98,32 +106,45 @@ int main(int argc, char *argv[])
     }
     myvessel->arrivalTime = 0.0;
     myvessel->departureTime = 0.0;
-    myvessel->stillINport = 0;
+    myvessel->status = ENTER;
     // attach shared mem
-    printf("BEFORE ATTACHING SHARED");
     myShared = (SharedMemory *)shmat(shmid, (void *)0, 0);
     if (myShared == (void *)-1)
     {
         perror("Attachment.");
         exit(3);
     }
-    printf("AFTER ATTACHING SHARED");
+    SharedMemory *node = (SharedMemory*) myShared; 
+    node->pubLedger.SmallVessels = (char*)myShared + sizeof(SharedMemory);
+    node->pubLedger.MediumVessels = (char*)myShared + sizeof(SharedMemory);
+    node->pubLedger.LargeVessels = (char*)myShared + sizeof(SharedMemory);
+
+    
     // begin doing stuff
     // ask for entry putting info in the shm
-    sem_wait(&(myShared->RequestEntry));
+    int req;
+    sem_getvalue(&(node->Request), &req);
+    printf("VSrequest is -> %d\n", req);
+    sem_getvalue(&(node->OK), &req);
+    printf("VSok is -> %d\n", req);
+    sem_wait(&(node->Request));
+    printf("MPAINW EDW");
     // putting my info for review
-    memcpy(&(myShared->shipToCome), myvessel, sizeof(VesselInfo));
+    memcpy(&(node->shipToCome), myvessel, sizeof(VesselInfo));
+    // send OK that I put info
+    sem_post(&(node->OK));
+    sleep(2);
     // wait for the OK from port master
-    printf("vessel before ok : %d",myShared->shipToCome.stillINport );
-    sem_wait(&(myShared->OK));
-    printf("what a vessel read : %d",myShared->shipToCome.stillINport );
+    printf("vessel before ok : %d",node->shipToCome.status );
+    sem_wait(&(node->OK));
+    printf("what a vessel read : %d",node->shipToCome.status );
     // let's check if I am eligible to park
-    if (myShared->shipToCome.stillINport == 1)
+    if (node->shipToCome.status == ACCEPTED)
     {
         // YES I got accepted let's proceed
-        vesselJob(myvessel, myShared);
+        vesselJob(myvessel, node);
     }
-    else
+    else if (node->shipToCome.status == WAIT)
     {
         // didn't get accepted let's put my self in the correct fifo
         // depending on my type
@@ -131,33 +152,35 @@ int main(int argc, char *argv[])
         {
             // wait for the small semaphore
             // wait in the relevant fifo
-            sem_wait(&(myShared->SmallSem));
+            sem_wait(&(node->SmallSem));
             printf("I went through the small sem %s\n", myvessel->name);
-            vesselJob(myvessel, myShared);
+            vesselJob(myvessel, node);
         }
         if (myvessel->type == 'M')
         {
             // wait for the medium semaphore
             // wait in the relevant fifo
-            sem_wait(&(myShared->MedSem));
+            sem_wait(&(node->MedSem));
             printf("I went through the med sem %s\n", myvessel->name);
-            vesselJob(myvessel, myShared);
+            vesselJob(myvessel, node);
         }
         if (myvessel->type == 'L')
         {
             // wait for the large semaphore
             // wait in the relevant fifo
-            sem_wait(&(myShared->LarSem));
+            sem_wait(&(node->LarSem));
             printf("I went through the large sem %s\n", myvessel->name);
-            vesselJob(myvessel, myShared);
+            vesselJob(myvessel, node);
         }
     }
     // ask for movement in the port
     // ask for the semaphores according to its type and place info in the shm
 
-    // sem_post(&(myShared->portMovement));
     // free malloc'd space
     free(myvessel);
+    int err ;
+    err = shmdt (( void *) myShared );
+    if ( err == -1 ) perror (" Detachment ");
     printf("vessel is now exiting \n");
     exit(0);
     return 0;

@@ -1,5 +1,11 @@
 #include <semaphore.h>
 // #define MAX 50
+#define ENTER 0
+#define EXIT 1
+#define LEFT 2
+#define WAIT 3
+#define ACCEPTED 4
+
 struct Vessel
 {
     char name[20];
@@ -9,7 +15,7 @@ struct Vessel
     int mantime;
     float arrivalTime;
     float departureTime;
-    int stillINport;
+    int status;
 };
 typedef struct Vessel VesselInfo;
 
@@ -40,13 +46,11 @@ typedef struct PublicLedger PublicLedger;
 struct SharedMemory
 {
     //semaphores
-    sem_t portMovement;
     sem_t SmallSem;
     sem_t MedSem;
     sem_t LarSem;
-    sem_t RequestEntry;
+    sem_t Request;
     sem_t OK;
-    sem_t exit;
     // sem_t StoMsem;
     // sem_t StoLsem;
     // sem_t MtoLsem;

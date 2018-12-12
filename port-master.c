@@ -7,9 +7,181 @@
 #include <sys/ipc.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/shm.h>
 #include "myheader.h"
 
 extern int errno;
+
+void exiting(SharedMemory *myShared)
+{
+    VesselInfo *ShipToExit = malloc(sizeof(VesselInfo));
+    sem_post(&(myShared->OK));
+    memcpy(ShipToExit, &(myShared->shipToCome), sizeof(VesselInfo));
+    // wait for it to finish
+    sem_wait(&(myShared->Request));
+    //write status to left
+    ShipToExit->status = LEFT;
+    // free a space for another ship to enter
+    if (ShipToExit->type == 'S')
+    {
+        myShared->curcap1++;
+    }
+    else if (ShipToExit->type == 'M')
+    {
+        myShared->curcap2++;
+    }
+    else if (ShipToExit->type == 'L')
+    {
+        myShared->curcap3++;
+    }
+    // write it to public ledger
+    // let someone else to make a request
+    // I make a post in request when at while 1
+    // sem_post(&(myShared->Request));
+    return;
+}
+
+void entry(SharedMemory *myShared)
+{
+    if (myShared->shipToCome.type == 'S')
+    {
+        if (myShared->curcap1 > 0)
+        {
+            printf("There is a small place for me\n");
+            myShared->curcap1--;
+            // all good I will give you the OK to move
+            // and give you the OK to use the S sem
+            myShared->shipToCome.status = ACCEPTED;
+            // gave him permission to proceed
+            // send the OK to read the status
+            sem_post(&(myShared->OK));
+            // you are free to move
+            // wait for sleep to finish so that The request will be open for someone else
+            // sem_wait(&(myShared->Request));
+            // going to park
+            // write down the info I want for him
+        }
+        else if (myShared->curcap1 == 0)
+        {
+            if(myShared->shipToCome.upgrade == 'M'){
+                if (myShared->curcap2 > 0)
+                {
+                    myShared->curcap2--;
+                    // all good I will give you the OK to move
+                    // and give you the OK to use the m sem
+                    myShared->shipToCome.status = ACCEPTED;
+                    // gave him permission to proceed
+                    // change type to M
+                    myShared->shipToCome.type = 'M';
+                    // send the OK to read the status
+                    sem_post(&(myShared->OK));
+                    // you are free to move
+                    // going to park
+                    // write down the info I want for him
+                }
+            }
+            else if(myShared->shipToCome.upgrade == 'L'){
+                if (myShared->curcap3 > 0)
+                {
+                    myShared->curcap3--;
+                    // all good I will give you the OK to move
+                    // and give you the OK to use the m sem
+                    myShared->shipToCome.status = ACCEPTED;
+                    // gave him permission to proceed
+                    // change type to M
+                    myShared->shipToCome.type = 'L';
+                    // send the OK to read the status
+                    sem_post(&(myShared->OK));
+                    // you are free to move
+                    // going to park
+                    // write down the info I want for him
+                }
+            }
+            else {
+                //no upgrade given
+                // wait signal
+                myShared->shipToCome.status = WAIT;
+                sem_post(&(myShared->OK));
+            }
+        }
+        // means that this ship is already taken care of
+        // myShared->shipToCome.type = 'N';
+    }
+    if (myShared->shipToCome.type == 'M')
+    {
+        if (myShared->curcap2 > 0)
+        {
+            printf("There is a med place for me\n");
+            myShared->curcap2--;
+            // all good I will give you the OK to move
+            // and give you the OK to use the m sem
+            myShared->shipToCome.status = ACCEPTED;
+            // gave him permission to proceed
+            // send the OK to read the status
+            sem_post(&(myShared->OK));
+            // you are free to move
+            // wait for sleep to finish so that The request will be open for someone else
+            // sem_wait(&(myShared->Request));
+            // going to park
+            // write down the info I want for him
+        }
+        else if (myShared->curcap2 == 0)
+        {
+            if(myShared->shipToCome.upgrade == 'L'){
+                if (myShared->curcap3 > 0)
+                {
+                    myShared->curcap3--;
+                    // all good I will give you the OK to move
+                    // and give you the OK to use the m sem
+                    myShared->shipToCome.status = ACCEPTED;
+                    // gave him permission to proceed
+                    // change type to M
+                    myShared->shipToCome.type = 'L';
+                    // send the OK to read the status
+                    sem_post(&(myShared->OK));
+                    // you are free to move
+                    // going to park
+                    // write down the info I want for him
+                }
+            }
+            else {
+                //no upgrade given
+                // wait signal
+                myShared->shipToCome.status = WAIT;
+                sem_post(&(myShared->OK));
+            }
+        }
+        // means that this ship is already taken care of
+        // myShared->shipToCome.type = 'N';
+    }
+    if (myShared->shipToCome.type == 'L')
+    {
+        if (myShared->curcap3 > 0)
+        {
+            printf("There is a large place for me\n");
+            myShared->curcap3--;
+            // all good I will give you the OK to move
+            // and give you the OK to use the m sem
+            myShared->shipToCome.status = ACCEPTED;
+            // gave him permission to proceed
+            // send the OK to read the status
+            sem_post(&(myShared->OK));
+            // you are free to move
+            // wait for sleep to finish so that The request will be open for someone else
+            // sem_wait(&(myShared->Request));
+            // going to park
+            // write down the info I want for him
+        }
+        else if (myShared->curcap3 == 0)
+        {
+            // wait signal
+            myShared->shipToCome.status = WAIT;
+            sem_post(&(myShared->OK));
+        }
+        // means that this ship is already taken care of
+        // myShared->shipToCome.type = 'N';
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -18,7 +190,6 @@ int main(int argc, char *argv[])
     char chargesFile[20];
     int Scost = 0, Mcost = 0, Lcost = 0, cost = 0;
     char type[10];
-    VesselInfo *ShipToEnter;
     FILE *fp;
     SharedMemory *myShared;
     if (argc != 5)
@@ -36,6 +207,15 @@ int main(int argc, char *argv[])
         printf("couldn't read the -c parameter");
         return 2;
     }
+    if (!strcmp(argv[3], "-s"))
+    {
+        shmid = atoi(argv[4]);
+    }
+    else
+    {
+        printf("couldn't read the -c parameter");
+        return 2;
+    }
     fp = fopen(chargesFile, "r");
     while (fscanf(fp, "%s %d", type, &cost) == 2)
     {
@@ -46,157 +226,52 @@ int main(int argc, char *argv[])
         else if (!strcmp(type, "Large"))
             Lcost = cost;
     }
-    printf("costs: %d , %d , %d  \n", Scost, Mcost, Lcost);
-    // port-master is in charge of portMovement sem and responsible to increment it when
+    // attach shm
+    myShared = (SharedMemory *)shmat(shmid, (void *)0, 0);
+    if (myShared == (void *)-1)
+    {
+        perror("Attachment.");
+        exit(3);
+    }
+    SharedMemory *node = (SharedMemory*) myShared; 
+    node->pubLedger.SmallVessels = (char*)myShared + sizeof(SharedMemory);
+    node->pubLedger.MediumVessels = (char*)myShared + sizeof(SharedMemory);
+    node->pubLedger.LargeVessels = (char*)myShared + sizeof(SharedMemory);
     // a ship can move in the port
     // in charge of port movement sem
-    printf("I am in");
-    sem_wait(&(myShared->portMovement));
-    sem_wait(&(myShared->OK));
     // takes first the port movement sem
     // has to decide if the first incoming ship can come in the port
-    // curcap --; kai ++;
     while (1)
     {
-        // waits for the first entry in shm vessel ship
-        while (req != 0)
+        // posts request for someone to come in
+        sem_getvalue(&(node->Request), &req);
+        printf("request is -> %d\n", req);
+        sem_getvalue(&(node->OK), &req);
+        printf("ok is -> %d\n", req);
+        sem_post(&(node->Request));
+        // wait for someone to put info
+        printf("MPAINW EDWwwwwwwwwwwwww");
+        sem_wait(&(node->OK));
+        printf("yyyyyyyyyyyyyyy %d", node->shipToCome.status);
+        
+        if (node->shipToCome.status == EXIT)
         {
-            sleep(3);
-            sem_getvalue(&(myShared->RequestEntry), &req);
-            printf("port master req val is %d", req);
+            // proceed to exit
+            exiting(node);
+        }
+        else if (node->shipToCome.status == ENTER)
+        {
+            // proceed to entry checks
+            entry(node);
+            
         }
         // now that there is some ship info in shm
         // let's check if I can place it somewhere
-        if (myShared->shipToCome.type == 'S')
-        {
-            if (myShared->curcap1 > 0)
-            {
-                myShared->curcap1--;
-                // all good I will give you the OK to move
-                // and give you the OK to use the S sem
-                myShared->shipToCome.stillINport = 1;
-                // gave him permission to proceed
-                // send the OK to read the status
-                sem_post(&(myShared->OK));
-                // you are free to move
-                sem_post(&(myShared->portMovement));
-                // going to park
-                // write down the info I want for him
-            }
-            else if (myShared->curcap1 == 0)
-            {
-                // someone wants to exit port
-                sem_wait(&(myShared->exit));
-                // wait for port movement
-                sem_wait(&(myShared->portMovement));
-                myShared->curcap1++;
-                // let the ones that are on the queue to go ahead
-                // and do the vessel job
-                sem_post(&(myShared->SmallSem));
-            }
-            else if (myShared->shipToCome.upgrade == 'M')
-            {
-                if (myShared->curcap2 > 0)
-                {
-                    myShared->curcap2--;
-                    // all good I will give you the OK to move
-                    // and give you the OK to use the m sem
-                    myShared->shipToCome.stillINport = 1;
-                    // gave him permission to proceed
-                    // send the OK to read the status
-                    sem_post(&(myShared->OK));
-                    // you are free to move
-                    sem_post(&(myShared->portMovement));
-                }
-                else if (myShared->curcap2 == 0)
-                {
-                    // haven't decided yet how to handle this case
-                }
-            }
-            else if (myShared->shipToCome.upgrade == 'L')
-            {
-                if (myShared->curcap3 > 0)
-                {
-                    myShared->curcap3--;
-                    // all good I will give you the OK to move
-                    // and give you the OK to use the m sem
-                    myShared->shipToCome.stillINport = 1;
-                    // gave him permission to proceed
-                    // send the OK to read the status
-                    sem_post(&(myShared->OK));
-                    // you are free to move
-                    sem_post(&(myShared->portMovement));
-                }
-            }
-        }
-        else if (myShared->shipToCome.type == 'M')
-        {
-            // all good I will give you the OK to move
-            // and give you the OK to use the M sem
-            if (myShared->curcap2 > 0)
-            {
-                myShared->curcap2--;
-                // all good I will give you the OK to move
-                // and give you the OK to use the m sem
-                myShared->shipToCome.stillINport = 1;
-                // gave him permission to proceed
-                // send the OK to read the status
-                sem_post(&(myShared->OK));
-                // you are free to move
-                sem_post(&(myShared->portMovement));
-                // going to park
-                // write down the info I want for him
-            }
-            else if (myShared->curcap2 == 0)
-            {
-                // someone wants to exit port
-                sem_wait(&(myShared->exit));
-                // wait for port movement
-                sem_wait(&(myShared->portMovement));
-                myShared->curcap2++;
-                // let the ones that are on the queue to go ahead
-                // and do the vessel job
-                sem_post(&(myShared->MedSem));
-            }
-            else if (myShared->shipToCome.upgrade == 'L')
-            {
-                if (myShared->curcap3 > 0)
-                {
-                    myShared->curcap3--;
-                    // all good I will give you the OK to move
-                    // and give you the OK to use the m sem
-                    myShared->shipToCome.stillINport = 1;
-                    // gave him permission to proceed
-                    // send the OK to read the status
-                    sem_post(&(myShared->OK));
-                    // you are free to move
-                    sem_post(&(myShared->portMovement));
-                    // going to park
-                    // write down the info I want for him
-                }
-            }
-        }
-        else if (myShared->shipToCome.type == 'L')
-        {
-            // all good I will give you the OK to move
-            // and give you the OK to use the L sem
-            if (myShared->curcap3 > 0)
-            {
-                myShared->curcap3--;
-                // all good I will give you the OK to move
-                // and give you the OK to use the l sem
-                myShared->shipToCome.stillINport = 1;
-                // gave him permission to proceed
-                // send the OK to read the status
-                sem_post(&(myShared->OK));
-                // you are free to move
-                sem_post(&(myShared->portMovement));
-                // going to park
-                // write down the info I want for him
-            }
-        }
     }
-
+    int err;
+    err = shmdt((void *)myShared);
+    if (err == -1)
+        perror(" Detachment ");
     exit(0);
     return 0;
 }
