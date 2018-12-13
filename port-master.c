@@ -26,14 +26,42 @@ void exiting(SharedMemory *myShared)
     if (ShipToExit->type == 'S')
     {
         myShared->curcap1++;
+        // post the semaphore 
+        int req;
+        sem_getvalue(&(myShared->SmallSem), &req);
+        printf("posting the small sem %d\n", req);
+        if(req == 0){
+            sem_post(&(myShared->SmallSem));
+        }
+        sem_getvalue(&(myShared->SmallSem), &req);
+        printf("posting the small sem2 %d\n", req);
     }
     else if (ShipToExit->type == 'M')
     {
         myShared->curcap2++;
+        // post the semaphore 
+        int req;
+        sem_getvalue(&(myShared->MedSem), &req);
+        printf("posting the med sem %d\n", req);
+        if(req == 0){
+            sem_post(&(myShared->MedSem));
+        }
+        sem_getvalue(&(myShared->MedSem), &req);
+        printf("posting the med sem2 %d\n", req);
+        
     }
     else if (ShipToExit->type == 'L')
     {
         myShared->curcap3++;
+        // post the semaphore 
+        int req;
+        sem_getvalue(&(myShared->LarSem), &req);
+        printf("posting the large sem %d\n", req);
+        if(req == 0){
+            sem_post(&(myShared->LarSem));
+        }
+        sem_getvalue(&(myShared->LarSem), &req);
+        printf("posting the large sem2 %d\n", req);
     }
     // write it to public ledger
     // let someone else to make a request
@@ -64,9 +92,11 @@ void entry(SharedMemory *myShared)
         }
         else if (myShared->curcap1 == 0)
         {
+            printf("blepw capacity =0 gia small, %c \n", myShared->shipToCome.upgrade);
             if(myShared->shipToCome.upgrade == 'M'){
                 if (myShared->curcap2 > 0)
                 {
+                    printf("blepw med upgrade gia small \n");
                     myShared->curcap2--;
                     // all good I will give you the OKpm to move
                     // and give you the OKpm to use the m sem
@@ -102,6 +132,7 @@ void entry(SharedMemory *myShared)
                 //no upgrade given
                 // wait signal
                 myShared->shipToCome.status = WAIT;
+                // send the ok from pm
                 sem_post(&(myShared->OKpm));
             }
         }
@@ -252,7 +283,7 @@ int main(int argc, char *argv[])
         sem_post(&(node->Request));
         // wait for someone to put info
         sem_wait(&(node->OKves));
-        printf("Request status %d\n", node->shipToCome.status);
+        printf("Request status %d, %c\n", node->shipToCome.status, node->shipToCome.type);
         
         if (node->shipToCome.status == EXIT)
         {

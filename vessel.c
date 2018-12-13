@@ -128,6 +128,7 @@ int main(int argc, char *argv[])
     node->pubLedger.LargeVessels = (char*)myShared + sizeof(SharedMemory);
 
     
+    
     // begin doing stuff
     // ask for entry putting info in the shm
     // int req;
@@ -138,7 +139,9 @@ int main(int argc, char *argv[])
     sem_wait(&(node->Request));
     // printf("MPAINW EDW");
     // putting my info for review
+    // node->shipToCome = *myvessel;
     memcpy(&(node->shipToCome), myvessel, sizeof(VesselInfo));
+    printf("------%c-----\n", node->shipToCome.upgrade);
     // send OKpm that I put info
     // printf("vessel before ok : %d",node->shipToCome.status );
     sem_post(&(node->OKves));
@@ -147,6 +150,7 @@ int main(int argc, char *argv[])
     sem_wait(&(node->OKpm));
     // printf("what a vessel read : %d",node->shipToCome.status );
     // let's check if I am eligible to park
+    printf("------%c-----\n", node->shipToCome.upgrade);
     if (node->shipToCome.status == ACCEPTED)
     {
         // YES I got accepted let's proceed
@@ -156,24 +160,30 @@ int main(int argc, char *argv[])
     {
         // didn't get accepted let's put my self in the correct fifo
         // depending on my type
-        if (myvessel->type == 'S')
+        if (node->shipToCome.type == 'S')
         {
+            // send a man done 
+            sem_post(&(myShared->manDone));
             // wait for the small semaphore
             // wait in the relevant fifo
             sem_wait(&(node->SmallSem));
             printf("I went through the small sem %s\n", myvessel->name);
             vesselJob(myvessel, node);
         }
-        if (myvessel->type == 'M')
+        if (node->shipToCome.type == 'M')
         {
+            // send a man done 
+            sem_post(&(myShared->manDone));
             // wait for the medium semaphore
             // wait in the relevant fifo
             sem_wait(&(node->MedSem));
             printf("I went through the med sem %s\n", myvessel->name);
             vesselJob(myvessel, node);
         }
-        if (myvessel->type == 'L')
+        if (node->shipToCome.type == 'L')
         {
+            // send a man done 
+            sem_post(&(myShared->manDone));
             // wait for the large semaphore
             // wait in the relevant fifo
             sem_wait(&(node->LarSem));
