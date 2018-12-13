@@ -18,29 +18,37 @@ void vesselJob(VesselInfo *myvessel, SharedMemory *myShared)
     // memcpy(&(myShared->shipToCome), myvessel, sizeof(VesselInfo));
     // dostuff
     // moving in the port in order to park
+    printf("I am vessel and begin sleeping mantime\n");
     sleep(myvessel->mantime);
     // stopped moving so give permission to someone else to do work
-    sem_post(&(myShared->Request));
+    // printf("I am vessel and post req");
+    sem_post(&(myShared->manDone));
+    // printf("I am vessel and begin parkperiod");
     // stays in the port
     sleep(myvessel->parkperiod);
     // asks how much should I pay?
     // I now want to exit
-    int req;
-    sem_getvalue(&(myShared->Request), &req);
-    printf("I want to exitVSrequest is -> %d\n", req);
-    sem_getvalue(&(myShared->OK), &req);
-    printf("I want to exitVSok is -> %d\n", req);
+    // int req;
+    // sem_getvalue(&(myShared->Request), &req);
+    // printf("I want to exitVSrequest is -> %d\n", req);
+    // sem_getvalue(&(myShared->OKpm), &req);
+    // printf("I want to exitVSok is -> %d\n", req);
     sem_wait(&(myShared->Request));
     myvessel->status = EXIT;
     memcpy(&(myShared->shipToCome), myvessel, sizeof(VesselInfo));
-    sem_post(&(myShared->OK));
-    //send OK i've sent my info to port master and wait for him to respond that he read it too
-    sem_wait(&(myShared->OK));
+    // printf("vessel before ok wrote exit: %d",myShared->shipToCome.status );
+    sem_post(&(myShared->OKves));
+    // wait port-master to read from shm
+    // sleep(2);
+    //send OKpm i've sent my info to port master and wait for him to respond that he read it too
+    sem_wait(&(myShared->OKpm));
+    // printf("vessel after ok read: %d",myShared->shipToCome.status );
     // wait till you can leave port
     // time to move from port
     sleep(myvessel->mantime);
     //let the others know I 'm done using the port
-    sem_post(&(myShared->Request));
+    printf("vessel is posting the mandone\n");
+    sem_post(&(myShared->manDone));
     return;
 }
 
@@ -122,22 +130,22 @@ int main(int argc, char *argv[])
     
     // begin doing stuff
     // ask for entry putting info in the shm
-    int req;
-    sem_getvalue(&(node->Request), &req);
-    printf("VSrequest is -> %d\n", req);
-    sem_getvalue(&(node->OK), &req);
-    printf("VSok is -> %d\n", req);
+    // int req;
+    // sem_getvalue(&(node->Request), &req);
+    // printf("VSrequest is -> %d\n", req);
+    // sem_getvalue(&(node->OKpm), &req);
+    // printf("VSok is -> %d\n", req);
     sem_wait(&(node->Request));
-    printf("MPAINW EDW");
+    // printf("MPAINW EDW");
     // putting my info for review
     memcpy(&(node->shipToCome), myvessel, sizeof(VesselInfo));
-    // send OK that I put info
-    sem_post(&(node->OK));
-    sleep(2);
-    // wait for the OK from port master
-    printf("vessel before ok : %d",node->shipToCome.status );
-    sem_wait(&(node->OK));
-    printf("what a vessel read : %d",node->shipToCome.status );
+    // send OKpm that I put info
+    // printf("vessel before ok : %d",node->shipToCome.status );
+    sem_post(&(node->OKves));
+    // sleep(2);
+    // wait for the OKpm from port master
+    sem_wait(&(node->OKpm));
+    // printf("what a vessel read : %d",node->shipToCome.status );
     // let's check if I am eligible to park
     if (node->shipToCome.status == ACCEPTED)
     {

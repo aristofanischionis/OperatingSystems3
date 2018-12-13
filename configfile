@@ -8,5 +8,12 @@ cost1 50
 cost2 75
 cost3 120
 ./monitor -d 10 -t 30 -s
-vesselnum 1
-./vessel -t S -u M -p 20 -m 10 -s
+vesselnum 8
+./vessel -t S -u M -p 5 -m 2 -s
+./vessel -t M -u M -p 5 -m 2 -s
+./vessel -t L -u L -p 5 -m 2 -s
+./vessel -t M -u L -p 5 -m 2 -s
+./vessel -t L -u L -p 5 -m 2 -s
+./vessel -t S -u L -p 5 -m 2 -s
+./vessel -t S -u M -p 5 -m 2 -s
+./vessel -t S -u S -p 5 -m 2 -s

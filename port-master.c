@@ -15,10 +15,11 @@ extern int errno;
 void exiting(SharedMemory *myShared)
 {
     VesselInfo *ShipToExit = malloc(sizeof(VesselInfo));
-    sem_post(&(myShared->OK));
+    printf("exiting portmaster \n");
+    sem_post(&(myShared->OKpm));
     memcpy(ShipToExit, &(myShared->shipToCome), sizeof(VesselInfo));
     // wait for it to finish
-    sem_wait(&(myShared->Request));
+    sem_wait(&(myShared->manDone));
     //write status to left
     ShipToExit->status = LEFT;
     // free a space for another ship to enter
@@ -49,12 +50,12 @@ void entry(SharedMemory *myShared)
         {
             printf("There is a small place for me\n");
             myShared->curcap1--;
-            // all good I will give you the OK to move
-            // and give you the OK to use the S sem
+            // all good I will give you the OKpm to move
+            // and give you the OKpm to use the S sem
             myShared->shipToCome.status = ACCEPTED;
             // gave him permission to proceed
-            // send the OK to read the status
-            sem_post(&(myShared->OK));
+            // send the OKpm to read the status
+            sem_post(&(myShared->OKpm));
             // you are free to move
             // wait for sleep to finish so that The request will be open for someone else
             // sem_wait(&(myShared->Request));
@@ -67,14 +68,14 @@ void entry(SharedMemory *myShared)
                 if (myShared->curcap2 > 0)
                 {
                     myShared->curcap2--;
-                    // all good I will give you the OK to move
-                    // and give you the OK to use the m sem
+                    // all good I will give you the OKpm to move
+                    // and give you the OKpm to use the m sem
                     myShared->shipToCome.status = ACCEPTED;
                     // gave him permission to proceed
                     // change type to M
                     myShared->shipToCome.type = 'M';
-                    // send the OK to read the status
-                    sem_post(&(myShared->OK));
+                    // send the OKpm to read the status
+                    sem_post(&(myShared->OKpm));
                     // you are free to move
                     // going to park
                     // write down the info I want for him
@@ -84,14 +85,14 @@ void entry(SharedMemory *myShared)
                 if (myShared->curcap3 > 0)
                 {
                     myShared->curcap3--;
-                    // all good I will give you the OK to move
-                    // and give you the OK to use the m sem
+                    // all good I will give you the OKpm to move
+                    // and give you the OKpm to use the m sem
                     myShared->shipToCome.status = ACCEPTED;
                     // gave him permission to proceed
                     // change type to M
                     myShared->shipToCome.type = 'L';
-                    // send the OK to read the status
-                    sem_post(&(myShared->OK));
+                    // send the OKpm to read the status
+                    sem_post(&(myShared->OKpm));
                     // you are free to move
                     // going to park
                     // write down the info I want for him
@@ -101,7 +102,7 @@ void entry(SharedMemory *myShared)
                 //no upgrade given
                 // wait signal
                 myShared->shipToCome.status = WAIT;
-                sem_post(&(myShared->OK));
+                sem_post(&(myShared->OKpm));
             }
         }
         // means that this ship is already taken care of
@@ -113,12 +114,12 @@ void entry(SharedMemory *myShared)
         {
             printf("There is a med place for me\n");
             myShared->curcap2--;
-            // all good I will give you the OK to move
-            // and give you the OK to use the m sem
+            // all good I will give you the OKpm to move
+            // and give you the OKpm to use the m sem
             myShared->shipToCome.status = ACCEPTED;
             // gave him permission to proceed
-            // send the OK to read the status
-            sem_post(&(myShared->OK));
+            // send the OKpm to read the status
+            sem_post(&(myShared->OKpm));
             // you are free to move
             // wait for sleep to finish so that The request will be open for someone else
             // sem_wait(&(myShared->Request));
@@ -131,14 +132,14 @@ void entry(SharedMemory *myShared)
                 if (myShared->curcap3 > 0)
                 {
                     myShared->curcap3--;
-                    // all good I will give you the OK to move
-                    // and give you the OK to use the m sem
+                    // all good I will give you the OKpm to move
+                    // and give you the OKpm to use the m sem
                     myShared->shipToCome.status = ACCEPTED;
                     // gave him permission to proceed
                     // change type to M
                     myShared->shipToCome.type = 'L';
-                    // send the OK to read the status
-                    sem_post(&(myShared->OK));
+                    // send the OKpm to read the status
+                    sem_post(&(myShared->OKpm));
                     // you are free to move
                     // going to park
                     // write down the info I want for him
@@ -148,7 +149,7 @@ void entry(SharedMemory *myShared)
                 //no upgrade given
                 // wait signal
                 myShared->shipToCome.status = WAIT;
-                sem_post(&(myShared->OK));
+                sem_post(&(myShared->OKpm));
             }
         }
         // means that this ship is already taken care of
@@ -160,12 +161,12 @@ void entry(SharedMemory *myShared)
         {
             printf("There is a large place for me\n");
             myShared->curcap3--;
-            // all good I will give you the OK to move
-            // and give you the OK to use the m sem
+            // all good I will give you the OKpm to move
+            // and give you the OKpm to use the m sem
             myShared->shipToCome.status = ACCEPTED;
             // gave him permission to proceed
-            // send the OK to read the status
-            sem_post(&(myShared->OK));
+            // send the OKpm to read the status
+            sem_post(&(myShared->OKpm));
             // you are free to move
             // wait for sleep to finish so that The request will be open for someone else
             // sem_wait(&(myShared->Request));
@@ -176,7 +177,7 @@ void entry(SharedMemory *myShared)
         {
             // wait signal
             myShared->shipToCome.status = WAIT;
-            sem_post(&(myShared->OK));
+            sem_post(&(myShared->OKpm));
         }
         // means that this ship is already taken care of
         // myShared->shipToCome.type = 'N';
@@ -244,15 +245,14 @@ int main(int argc, char *argv[])
     while (1)
     {
         // posts request for someone to come in
-        sem_getvalue(&(node->Request), &req);
-        printf("request is -> %d\n", req);
-        sem_getvalue(&(node->OK), &req);
-        printf("ok is -> %d\n", req);
+        // sem_getvalue(&(node->Request), &req);
+        // printf("request is -> %d\n", req);
+        // sem_getvalue(&(node->OKpm), &req);
+        // printf("ok is -> %d\n", req);
         sem_post(&(node->Request));
         // wait for someone to put info
-        printf("MPAINW EDWwwwwwwwwwwwww");
-        sem_wait(&(node->OK));
-        printf("yyyyyyyyyyyyyyy %d", node->shipToCome.status);
+        sem_wait(&(node->OKves));
+        printf("Request status %d\n", node->shipToCome.status);
         
         if (node->shipToCome.status == EXIT)
         {
@@ -263,7 +263,8 @@ int main(int argc, char *argv[])
         {
             // proceed to entry checks
             entry(node);
-            
+            // wait for vessel to post request so that the next request can be processed
+            sem_wait(&(node->manDone));
         }
         // now that there is some ship info in shm
         // let's check if I can place it somewhere

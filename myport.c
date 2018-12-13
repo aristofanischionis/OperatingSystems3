@@ -195,7 +195,6 @@ int main(int argc, char *argv[])
     node->curcap1 = struct_configfile->ca1;
     node->curcap2 = struct_configfile->ca2;
     node->curcap3 = struct_configfile->ca3;
-    printf("myyportttt cap1 %d", node->curcap1 );
     /*  Initialize  the  semaphores. */
 
     if (sem_init(&(node->SmallSem), 1, 0) != 0)
@@ -218,7 +217,17 @@ int main(int argc, char *argv[])
         perror("Couldn’t initialize.");
         exit(9);
     }
-    if (sem_init(&(node->OK), 1, 0) != 0)
+    if (sem_init(&(node->OKpm), 1, 0) != 0)
+    {
+        perror("Couldn’t initialize.");
+        exit(9);
+    }
+    if (sem_init(&(node->OKves), 1, 0) != 0)
+    {
+        perror("Couldn’t initialize.");
+        exit(9);
+    }
+    if (sem_init(&(node->manDone), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
@@ -313,7 +322,9 @@ int main(int argc, char *argv[])
     sem_destroy(&(myShared->MedSem));
     sem_destroy(&(myShared->LarSem));
     sem_destroy(&(myShared->Request));
-    sem_destroy(&(myShared->OK));
+    sem_destroy(&(myShared->OKpm));
+    sem_destroy(&(myShared->OKves));
+    sem_destroy(&(myShared->manDone));
     // delete shm seg
     err = shmctl(shmid, IPC_RMID, 0); /*  Remove  segment  */
     if (err == -1) perror("Removal.");

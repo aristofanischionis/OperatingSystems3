@@ -50,7 +50,9 @@ struct SharedMemory
     sem_t MedSem;
     sem_t LarSem;
     sem_t Request;
-    sem_t OK;
+    sem_t OKpm;
+    sem_t OKves;
+    sem_t manDone;
     // sem_t StoMsem;
     // sem_t StoLsem;
     // sem_t MtoLsem;
