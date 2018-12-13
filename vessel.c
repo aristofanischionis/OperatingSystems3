@@ -13,10 +13,6 @@ extern int errno;
 void vesselJob(VesselInfo *myvessel, SharedMemory *myShared)
 {
     // wait for being able to move in the port
-    // sem_wait(&(myShared->Request));
-    // printf("my req to enter was accepted %c\n", myvessel->type);
-    // memcpy(&(myShared->shipToCome), myvessel, sizeof(VesselInfo));
-    // dostuff
     // moving in the port in order to park
     printf("I am vessel and begin sleeping mantime\n");
     sleep(myvessel->mantime);
@@ -28,11 +24,6 @@ void vesselJob(VesselInfo *myvessel, SharedMemory *myShared)
     sleep(myvessel->parkperiod);
     // asks how much should I pay?
     // I now want to exit
-    // int req;
-    // sem_getvalue(&(myShared->Request), &req);
-    // printf("I want to exitVSrequest is -> %d\n", req);
-    // sem_getvalue(&(myShared->OKpm), &req);
-    // printf("I want to exitVSok is -> %d\n", req);
     sem_wait(&(myShared->Request));
     myvessel->status = EXIT;
     memcpy(&(myShared->shipToCome), myvessel, sizeof(VesselInfo));
@@ -78,7 +69,7 @@ int main(int argc, char *argv[])
     }
     if (!strcmp(argv[3], "-u"))
     {
-        myvessel->upgrade, argv[4][0];
+        myvessel->upgrade = argv[4][0];
     }
     else
     {
@@ -137,11 +128,9 @@ int main(int argc, char *argv[])
     // sem_getvalue(&(node->OKpm), &req);
     // printf("VSok is -> %d\n", req);
     sem_wait(&(node->Request));
-    // printf("MPAINW EDW");
     // putting my info for review
     // node->shipToCome = *myvessel;
     memcpy(&(node->shipToCome), myvessel, sizeof(VesselInfo));
-    printf("------%c-----\n", node->shipToCome.upgrade);
     // send OKpm that I put info
     // printf("vessel before ok : %d",node->shipToCome.status );
     sem_post(&(node->OKves));
@@ -150,7 +139,6 @@ int main(int argc, char *argv[])
     sem_wait(&(node->OKpm));
     // printf("what a vessel read : %d",node->shipToCome.status );
     // let's check if I am eligible to park
-    printf("------%c-----\n", node->shipToCome.upgrade);
     if (node->shipToCome.status == ACCEPTED)
     {
         // YES I got accepted let's proceed
@@ -170,7 +158,7 @@ int main(int argc, char *argv[])
             printf("I went through the small sem %s\n", myvessel->name);
             vesselJob(myvessel, node);
         }
-        if (node->shipToCome.type == 'M')
+        else if (node->shipToCome.type == 'M')
         {
             // send a man done 
             sem_post(&(myShared->manDone));
@@ -180,7 +168,7 @@ int main(int argc, char *argv[])
             printf("I went through the med sem %s\n", myvessel->name);
             vesselJob(myvessel, node);
         }
-        if (node->shipToCome.type == 'L')
+        else if (node->shipToCome.type == 'L')
         {
             // send a man done 
             sem_post(&(myShared->manDone));

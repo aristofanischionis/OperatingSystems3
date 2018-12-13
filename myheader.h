@@ -5,6 +5,10 @@
 #define LEFT 2
 #define WAIT 3
 #define ACCEPTED 4
+//
+#define SMALL 5
+#define MED 6
+#define LARGE 7
 
 struct Vessel
 {

@@ -12,62 +12,36 @@
 
 extern int errno;
 
-void exiting(SharedMemory *myShared)
+int exiting(SharedMemory *myShared)
 {
-    VesselInfo *ShipToExit = malloc(sizeof(VesselInfo));
+    // VesselInfo *ShipToExit = malloc(sizeof(VesselInfo));
     printf("exiting portmaster \n");
-    sem_post(&(myShared->OKpm));
-    memcpy(ShipToExit, &(myShared->shipToCome), sizeof(VesselInfo));
+    // memcpy(ShipToExit, &(myShared->shipToCome), sizeof(VesselInfo));
     // wait for it to finish
+    printf("exiting waits for mandone\n");
     sem_wait(&(myShared->manDone));
+    printf("exiting took mandone\n");
     //write status to left
-    ShipToExit->status = LEFT;
+    myShared->shipToCome.status = LEFT;
     // free a space for another ship to enter
-    if (ShipToExit->type == 'S')
+    if (myShared->shipToCome.type == 'S')
     {
         myShared->curcap1++;
-        // post the semaphore 
-        int req;
-        sem_getvalue(&(myShared->SmallSem), &req);
-        printf("posting the small sem %d\n", req);
-        if(req == 0){
-            sem_post(&(myShared->SmallSem));
-        }
-        sem_getvalue(&(myShared->SmallSem), &req);
-        printf("posting the small sem2 %d\n", req);
+        return SMALL;
     }
-    else if (ShipToExit->type == 'M')
+    else if (myShared->shipToCome.type == 'M')
     {
         myShared->curcap2++;
-        // post the semaphore 
-        int req;
-        sem_getvalue(&(myShared->MedSem), &req);
-        printf("posting the med sem %d\n", req);
-        if(req == 0){
-            sem_post(&(myShared->MedSem));
-        }
-        sem_getvalue(&(myShared->MedSem), &req);
-        printf("posting the med sem2 %d\n", req);
-        
+        return MED;
     }
-    else if (ShipToExit->type == 'L')
+    else if (myShared->shipToCome.type == 'L')
     {
         myShared->curcap3++;
-        // post the semaphore 
-        int req;
-        sem_getvalue(&(myShared->LarSem), &req);
-        printf("posting the large sem %d\n", req);
-        if(req == 0){
-            sem_post(&(myShared->LarSem));
-        }
-        sem_getvalue(&(myShared->LarSem), &req);
-        printf("posting the large sem2 %d\n", req);
+        return LARGE;
     }
     // write it to public ledger
     // let someone else to make a request
-    // I make a post in request when at while 1
-    // sem_post(&(myShared->Request));
-    return;
+    return 0;
 }
 
 void entry(SharedMemory *myShared)
@@ -86,7 +60,6 @@ void entry(SharedMemory *myShared)
             sem_post(&(myShared->OKpm));
             // you are free to move
             // wait for sleep to finish so that The request will be open for someone else
-            // sem_wait(&(myShared->Request));
             // going to park
             // write down the info I want for him
         }
@@ -130,6 +103,7 @@ void entry(SharedMemory *myShared)
             }
             else {
                 //no upgrade given
+                printf("blepw no upgrade gia small \n");
                 // wait signal
                 myShared->shipToCome.status = WAIT;
                 // send the ok from pm
@@ -215,6 +189,48 @@ void entry(SharedMemory *myShared)
     }
 }
 
+void handleRequest(SharedMemory *node){
+    int res = 0;
+    sem_post(&(node->Request));
+    // wait for someone to put info
+    sem_wait(&(node->OKves));
+    printf("Request status %d, %c\n", node->shipToCome.status, node->shipToCome.type);
+    if (node->shipToCome.status == EXIT)
+    {
+        sem_post(&(node->OKpm));
+        // proceed to exit
+        res = exiting(node);
+        // check what position is available so that I can place 
+        // someone from the waiting queue
+        if(res == SMALL){
+            // post the sem
+            sem_post(&(node->SmallSem));
+            // wait for it to finish man
+            // sem_wait(&(node->manDone));
+        }
+        else if(res == MED){
+            // post the sem
+            sem_post(&(node->MedSem));
+            // wait for it to finish man
+            // sem_wait(&(node->manDone));
+        }
+        else if(res == LARGE){
+            // post the sem
+            sem_post(&(node->LarSem));
+            // wait for it to finish man
+            // sem_wait(&(node->manDone));
+        }
+    }
+    else if (node->shipToCome.status == ENTER)
+    {
+        // proceed to entry checks
+        entry(node);
+        // wait for vessel to post request so that the next request can be processed
+        // sem_wait(&(node->manDone));
+    }
+}
+
+
 int main(int argc, char *argv[])
 {
     printf("hi im port master %d\n", argc);
@@ -275,30 +291,27 @@ int main(int argc, char *argv[])
     // has to decide if the first incoming ship can come in the port
     while (1)
     {
-        // posts request for someone to come in
-        // sem_getvalue(&(node->Request), &req);
-        // printf("request is -> %d\n", req);
-        // sem_getvalue(&(node->OKpm), &req);
-        // printf("ok is -> %d\n", req);
-        sem_post(&(node->Request));
-        // wait for someone to put info
-        sem_wait(&(node->OKves));
-        printf("Request status %d, %c\n", node->shipToCome.status, node->shipToCome.type);
+        handleRequest(node);
+        // sem_post(&(node->Request));
+        // // wait for someone to put info
+        // sem_wait(&(node->OKves));
+        // printf("Request status %d, %c\n", node->shipToCome.status, node->shipToCome.type);
         
-        if (node->shipToCome.status == EXIT)
-        {
-            // proceed to exit
-            exiting(node);
-        }
-        else if (node->shipToCome.status == ENTER)
-        {
-            // proceed to entry checks
-            entry(node);
-            // wait for vessel to post request so that the next request can be processed
-            sem_wait(&(node->manDone));
-        }
-        // now that there is some ship info in shm
-        // let's check if I can place it somewhere
+        // if (node->shipToCome.status == EXIT)
+        // {
+        //     // proceed to exit
+        //     exiting(node);
+        //     // sem_wait(&(node->manDone)); // if a vessel has come because of sem post
+        // }
+        // else if (node->shipToCome.status == ENTER)
+        // {
+        //     // proceed to entry checks
+        //     entry(node);
+        //     // wait for vessel to post request so that the next request can be processed
+        //     sem_wait(&(node->manDone));
+        // }
+        // // now that there is some ship info in shm
+        // // let's check if I can place it somewhere
     }
     int err;
     err = shmdt((void *)myShared);
