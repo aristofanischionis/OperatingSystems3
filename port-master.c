@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/shm.h>
+#include <sys/time.h>
 #include "myheader.h"
 
 extern int errno;
@@ -18,7 +19,7 @@ int exiting(SharedMemory *myShared)
     printf("exiting portmaster \n");
     // memcpy(ShipToExit, &(myShared->shipToCome), sizeof(VesselInfo));
     // wait for it to finish
-    printf("exiting waits for mandone\n");
+    printf("exiting waits for mandone from %s\n", myShared->shipToCome.name);
     sem_wait(&(myShared->manDone));
     printf("exiting took mandone\n");
     //write status to left
@@ -46,7 +47,7 @@ int exiting(SharedMemory *myShared)
 
 void entry(SharedMemory *myShared)
 {
-    if (myShared->shipToCome.type == 'S')
+    if ((myShared->shipToCome.type == 'S') && (myShared->shipToCome.upgraded == NO))
     {
         if (myShared->curcap1 > 0)
         {
@@ -60,6 +61,7 @@ void entry(SharedMemory *myShared)
             sem_post(&(myShared->OKpm));
             // you are free to move
             // wait for sleep to finish so that The request will be open for someone else
+            sem_wait(&(myShared->manDone));
             // going to park
             // write down the info I want for him
         }
@@ -77,10 +79,13 @@ void entry(SharedMemory *myShared)
                     // gave him permission to proceed
                     // change type to M
                     myShared->shipToCome.type = 'M';
+                    myShared->shipToCome.upgraded = YES;
                     // send the OKpm to read the status
                     sem_post(&(myShared->OKpm));
+                    printf("I just gave the ok pm to s->m %s\n", myShared->shipToCome.name);
                     // you are free to move
                     // going to park
+                    sem_wait(&(myShared->manDone));
                     // write down the info I want for him
                 }
             }
@@ -94,10 +99,12 @@ void entry(SharedMemory *myShared)
                     // gave him permission to proceed
                     // change type to M
                     myShared->shipToCome.type = 'L';
+                    myShared->shipToCome.upgraded = YES;
                     // send the OKpm to read the status
                     sem_post(&(myShared->OKpm));
                     // you are free to move
                     // going to park
+                    sem_wait(&(myShared->manDone));
                     // write down the info I want for him
                 }
             }
@@ -113,7 +120,7 @@ void entry(SharedMemory *myShared)
         // means that this ship is already taken care of
         // myShared->shipToCome.type = 'N';
     }
-    if (myShared->shipToCome.type == 'M')
+    if ((myShared->shipToCome.type == 'M') && (myShared->shipToCome.upgraded == NO))
     {
         if (myShared->curcap2 > 0)
         {
@@ -127,7 +134,7 @@ void entry(SharedMemory *myShared)
             sem_post(&(myShared->OKpm));
             // you are free to move
             // wait for sleep to finish so that The request will be open for someone else
-            // sem_wait(&(myShared->Request));
+            sem_wait(&(myShared->manDone));
             // going to park
             // write down the info I want for him
         }
@@ -143,10 +150,12 @@ void entry(SharedMemory *myShared)
                     // gave him permission to proceed
                     // change type to M
                     myShared->shipToCome.type = 'L';
+                    myShared->shipToCome.upgraded = YES;
                     // send the OKpm to read the status
                     sem_post(&(myShared->OKpm));
                     // you are free to move
                     // going to park
+                    sem_wait(&(myShared->manDone));
                     // write down the info I want for him
                 }
             }
@@ -160,7 +169,7 @@ void entry(SharedMemory *myShared)
         // means that this ship is already taken care of
         // myShared->shipToCome.type = 'N';
     }
-    if (myShared->shipToCome.type == 'L')
+    if ((myShared->shipToCome.type == 'L') && (myShared->shipToCome.upgraded == NO))
     {
         if (myShared->curcap3 > 0)
         {
@@ -174,7 +183,7 @@ void entry(SharedMemory *myShared)
             sem_post(&(myShared->OKpm));
             // you are free to move
             // wait for sleep to finish so that The request will be open for someone else
-            // sem_wait(&(myShared->Request));
+            sem_wait(&(myShared->manDone));
             // going to park
             // write down the info I want for him
         }
@@ -190,11 +199,11 @@ void entry(SharedMemory *myShared)
 }
 
 void handleRequest(SharedMemory *node){
-    int res = 0;
+    int res = 0, req = -1;
     sem_post(&(node->Request));
     // wait for someone to put info
     sem_wait(&(node->OKves));
-    printf("Request status %d, %c\n", node->shipToCome.status, node->shipToCome.type);
+    printf("Request status %d, %c, %s\n", node->shipToCome.status, node->shipToCome.type, node->shipToCome.name);
     if (node->shipToCome.status == EXIT)
     {
         sem_post(&(node->OKpm));
@@ -203,22 +212,57 @@ void handleRequest(SharedMemory *node){
         // check what position is available so that I can place 
         // someone from the waiting queue
         if(res == SMALL){
-            // post the sem
-            sem_post(&(node->SmallSem));
-            // wait for it to finish man
-            // sem_wait(&(node->manDone));
+            // check if someone needs the sem
+            sem_getvalue(&(node->SmallSem), &req);
+            printf("MPHKA EDW MESA KAI EXEI VALUE SMALL %d\n", req);
+            if(req == 0){
+                // then someone needs the small sem
+                // so I will give him permission to go ahead
+                sem_post(&(node->SmallSem));
+                // try to get ok 
+                if( sem_wait(&(node->OKq)) == 0){
+                    printf("MPHKAAAAAAAAAAAAAA\n");
+                    
+                    sem_wait(&(node->manDone));
+                    printf("finished mandone waitingMPHKAAAAAAAAAAAAAA\n");
+
+                }
+                
+            }
         }
         else if(res == MED){
-            // post the sem
-            sem_post(&(node->MedSem));
-            // wait for it to finish man
-            // sem_wait(&(node->manDone));
+            // check if someone needs the sem
+            sem_getvalue(&(node->MedSem), &req);
+            printf("MPHKA EDW MESA KAI EXEI VALUE med %d\n", req);
+            if(req == 0){
+                // then someone needs the small sem
+                // so I will give him permission to go ahead
+                sem_post(&(node->MedSem));
+                // try to get ok 
+                if( sem_trywait(&(node->OKves)) == 0){
+                    // send ok
+                    sem_post(&(node->OKpm));
+                    // wait for it to finish man
+                    sem_wait(&(node->manDone));
+                }
+            }
         }
         else if(res == LARGE){
-            // post the sem
-            sem_post(&(node->LarSem));
-            // wait for it to finish man
-            // sem_wait(&(node->manDone));
+            // check if someone needs the sem
+            sem_getvalue(&(node->LarSem), &req);
+            printf("MPHKA EDW MESA KAI EXEI VALUE large %d\n", req);
+            if(req == 0){
+                // then someone needs the small sem
+                // so I will give him permission to go ahead
+                sem_post(&(node->LarSem));
+                // try to get ok 
+                if( sem_trywait(&(node->OKves)) == 0){
+                    // send ok
+                    sem_post(&(node->OKpm));
+                    // wait for it to finish man
+                    sem_wait(&(node->manDone));
+                }
+            }
         }
     }
     else if (node->shipToCome.status == ENTER)
@@ -228,12 +272,14 @@ void handleRequest(SharedMemory *node){
         // wait for vessel to post request so that the next request can be processed
         // sem_wait(&(node->manDone));
     }
+    printf("finished this request!!!!!!!!!!!\n");
 }
 
 
 int main(int argc, char *argv[])
 {
     printf("hi im port master %d\n", argc);
+    struct timeval t0, t1;
     int shmid, req = 0;
     char chargesFile[20];
     int Scost = 0, Mcost = 0, Lcost = 0, cost = 0;
@@ -291,28 +337,17 @@ int main(int argc, char *argv[])
     // has to decide if the first incoming ship can come in the port
     while (1)
     {
+        //place timer
+        gettimeofday(&t0, NULL);
         handleRequest(node);
-        // sem_post(&(node->Request));
-        // // wait for someone to put info
-        // sem_wait(&(node->OKves));
-        // printf("Request status %d, %c\n", node->shipToCome.status, node->shipToCome.type);
-        
-        // if (node->shipToCome.status == EXIT)
-        // {
-        //     // proceed to exit
-        //     exiting(node);
-        //     // sem_wait(&(node->manDone)); // if a vessel has come because of sem post
-        // }
-        // else if (node->shipToCome.status == ENTER)
-        // {
-        //     // proceed to entry checks
-        //     entry(node);
-        //     // wait for vessel to post request so that the next request can be processed
-        //     sem_wait(&(node->manDone));
-        // }
-        // // now that there is some ship info in shm
-        // // let's check if I can place it somewhere
+        gettimeofday(&t1, NULL);
+        double time_spent = (double) (t1.tv_usec - t0.tv_usec) / 1000000 + (double) (t1.tv_sec - t0.tv_sec);
+        printf("time spent on this request is %f\n", time_spent);
+        if(time_spent > 50){
+            break;
+        }
     }
+    printf("Finished while loop\n");
     int err;
     err = shmdt((void *)myShared);
     if (err == -1)

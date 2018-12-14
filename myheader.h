@@ -9,6 +9,9 @@
 #define SMALL 5
 #define MED 6
 #define LARGE 7
+//
+#define YES 8
+#define NO 9
 
 struct Vessel
 {
@@ -20,6 +23,7 @@ struct Vessel
     float arrivalTime;
     float departureTime;
     int status;
+    int upgraded;
 };
 typedef struct Vessel VesselInfo;
 
@@ -57,9 +61,7 @@ struct SharedMemory
     sem_t OKpm;
     sem_t OKves;
     sem_t manDone;
-    // sem_t StoMsem;
-    // sem_t StoLsem;
-    // sem_t MtoLsem;
+    sem_t OKq;
     //
     int curcap1;
     int curcap2;

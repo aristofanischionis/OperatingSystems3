@@ -14,17 +14,19 @@ void vesselJob(VesselInfo *myvessel, SharedMemory *myShared)
 {
     // wait for being able to move in the port
     // moving in the port in order to park
-    printf("I am vessel and begin sleeping mantime\n");
+    printf("I am vessel and begin sleeping mantime, %s\n", myvessel->name);
     sleep(myvessel->mantime);
     // stopped moving so give permission to someone else to do work
     // printf("I am vessel and post req");
     sem_post(&(myShared->manDone));
     // printf("I am vessel and begin parkperiod");
     // stays in the port
+    printf("I am vessel and begin sleeping parkperiod, %s\n", myvessel->name);
     sleep(myvessel->parkperiod);
     // asks how much should I pay?
     // I now want to exit
     sem_wait(&(myShared->Request));
+    printf("I am vessel and sending exit status, %s\n", myvessel->name);
     myvessel->status = EXIT;
     memcpy(&(myShared->shipToCome), myvessel, sizeof(VesselInfo));
     // printf("vessel before ok wrote exit: %d",myShared->shipToCome.status );
@@ -36,9 +38,10 @@ void vesselJob(VesselInfo *myvessel, SharedMemory *myShared)
     // printf("vessel after ok read: %d",myShared->shipToCome.status );
     // wait till you can leave port
     // time to move from port
+    printf("I am vessel and doing my last mantime, %s\n", myvessel->name);
     sleep(myvessel->mantime);
     //let the others know I 'm done using the port
-    printf("vessel is posting the mandone\n");
+    printf("vessel is posting the mandone, %s\n", myvessel->name);
     sem_post(&(myShared->manDone));
     return;
 }
@@ -106,6 +109,7 @@ int main(int argc, char *argv[])
     myvessel->arrivalTime = 0.0;
     myvessel->departureTime = 0.0;
     myvessel->status = ENTER;
+    myvessel->upgraded = NO;
     // attach shared mem
     myShared = (SharedMemory *)shmat(shmid, (void *)0, 0);
     if (myShared == (void *)-1)
@@ -136,11 +140,14 @@ int main(int argc, char *argv[])
     sem_post(&(node->OKves));
     // sleep(2);
     // wait for the OKpm from port master
+    printf("waiting ok from pm %s\n", node->shipToCome.name);
     sem_wait(&(node->OKpm));
+    printf("got ok %s %c\n", node->shipToCome.name, node->shipToCome.type);
     // printf("what a vessel read : %d",node->shipToCome.status );
     // let's check if I am eligible to park
     if (node->shipToCome.status == ACCEPTED)
     {
+        printf("I am accepted %s\n", node->shipToCome.name);
         // YES I got accepted let's proceed
         vesselJob(myvessel, node);
     }
@@ -151,19 +158,22 @@ int main(int argc, char *argv[])
         if (node->shipToCome.type == 'S')
         {
             // send a man done 
-            sem_post(&(myShared->manDone));
+            // sem_post(&(myShared->manDone));
             // wait for the small semaphore
             // wait in the relevant fifo
+            printf("SOMEONE IS REALLY WAITING RIGHT HERESMALL SEM %s\n", myvessel->name);
             sem_wait(&(node->SmallSem));
+            sem_post(&(node->OKq));
             printf("I went through the small sem %s\n", myvessel->name);
             vesselJob(myvessel, node);
         }
         else if (node->shipToCome.type == 'M')
         {
             // send a man done 
-            sem_post(&(myShared->manDone));
+            // sem_post(&(myShared->manDone));
             // wait for the medium semaphore
             // wait in the relevant fifo
+            printf("SOMEONE IS REALLY WAITING RIGHT med SEM %s\n", myvessel->name);
             sem_wait(&(node->MedSem));
             printf("I went through the med sem %s\n", myvessel->name);
             vesselJob(myvessel, node);
@@ -171,9 +181,10 @@ int main(int argc, char *argv[])
         else if (node->shipToCome.type == 'L')
         {
             // send a man done 
-            sem_post(&(myShared->manDone));
+            // sem_post(&(myShared->manDone));
             // wait for the large semaphore
-            // wait in the relevant fifo
+            // wait in the relevant 
+            printf("SOMEONE IS REALLY WAITING RIGHT large SEM %s\n", myvessel->name);
             sem_wait(&(node->LarSem));
             printf("I went through the large sem %s\n", myvessel->name);
             vesselJob(myvessel, node);
@@ -181,13 +192,13 @@ int main(int argc, char *argv[])
     }
     // ask for movement in the port
     // ask for the semaphores according to its type and place info in the shm
-
+    printf("vessel is now exiting, %s \n", myvessel->name);
     // free malloc'd space
     free(myvessel);
     int err ;
     err = shmdt (( void *) myShared );
     if ( err == -1 ) perror (" Detachment ");
-    printf("vessel is now exiting \n");
+    
     exit(0);
     return 0;
 }

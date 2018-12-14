@@ -2,6 +2,7 @@
     "files.associations": {
         "vessel.h": "c",
         "string.h": "c",
-        "myheader.h": "c"
+        "myheader.h": "c",
+        "shm.h": "c"
     }
 }

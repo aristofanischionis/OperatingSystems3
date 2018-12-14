@@ -169,6 +169,7 @@ int main(int argc, char *argv[])
     nodeShip->arrivalTime = 0.0;
     nodeShip->departureTime = 0.0;
     nodeShip->status = 0;
+    nodeShip->upgraded = NO;
     node->shipToCome = *nodeShip;
     //
     // PublicLedger *nodeledg = malloc(sizeof(PublicLedger) + sumCa*sizeof(VesselInfo));
@@ -228,6 +229,11 @@ int main(int argc, char *argv[])
         exit(9);
     }
     if (sem_init(&(node->manDone), 1, 0) != 0)
+    {
+        perror("Couldn’t initialize.");
+        exit(9);
+    }
+    if (sem_init(&(node->OKq), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
