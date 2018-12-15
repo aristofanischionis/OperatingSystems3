@@ -21,7 +21,7 @@ void vesselJob(VesselInfo *myvessel, SharedMemory *myShared)
     sem_post(&(myShared->manDone));
     // printf("I am vessel and begin parkperiod");
     // stays in the port
-    printf("I am vessel and begin sleeping parkperiod, %s\n", myvessel->name);
+    // printf("I am vessel and begin sleeping parkperiod, %s\n", myvessel->name);
     sleep(myvessel->parkperiod);
     // asks how much should I pay?
     // I now want to exit
@@ -38,10 +38,10 @@ void vesselJob(VesselInfo *myvessel, SharedMemory *myShared)
     // printf("vessel after ok read: %d",myShared->shipToCome.status );
     // wait till you can leave port
     // time to move from port
-    printf("I am vessel and doing my last mantime, %s\n", myvessel->name);
+    // printf("I am vessel and doing my last mantime, %s\n", myvessel->name);
     sleep(myvessel->mantime);
     //let the others know I 'm done using the port
-    printf("vessel is posting the mandone, %s\n", myvessel->name);
+    // printf("vessel is posting the mandone, %s\n", myvessel->name);
     sem_post(&(myShared->manDone));
     return;
 }
@@ -118,11 +118,13 @@ int main(int argc, char *argv[])
         exit(3);
     }
     SharedMemory *node = (SharedMemory*) myShared; 
-    node->pubLedger.SmallVessels = (char*)myShared + sizeof(SharedMemory);
-    node->pubLedger.MediumVessels = (char*)myShared + sizeof(SharedMemory);
-    node->pubLedger.LargeVessels = (char*)myShared + sizeof(SharedMemory);
-
+    node->pubLedger.SmallVessels = (VesselInfo *)((uint8_t *)myShared + sizeof(SharedMemory));
     
+    node->pubLedger.MediumVessels = (VesselInfo *)((uint8_t *)node->pubLedger.SmallVessels + \
+    (node->curcap2)*sizeof(VesselInfo));
+
+    node->pubLedger.LargeVessels = (VesselInfo *)((uint8_t *)node->pubLedger.MediumVessels + \
+    (node->curcap3)*sizeof(VesselInfo));
     
     // begin doing stuff
     // ask for entry putting info in the shm
@@ -140,9 +142,9 @@ int main(int argc, char *argv[])
     sem_post(&(node->OKves));
     // sleep(2);
     // wait for the OKpm from port master
-    printf("waiting ok from pm %s\n", node->shipToCome.name);
+    // printf("waiting ok from pm %s\n", node->shipToCome.name);
     sem_wait(&(node->OKpm));
-    printf("got ok %s %c\n", node->shipToCome.name, node->shipToCome.type);
+    // printf("got ok %s %c\n", node->shipToCome.name, node->shipToCome.type);
     // printf("what a vessel read : %d",node->shipToCome.status );
     // let's check if I am eligible to park
     if (node->shipToCome.status == ACCEPTED)
@@ -162,8 +164,8 @@ int main(int argc, char *argv[])
             // wait for the small semaphore
             // wait in the relevant fifo
             printf("SOMEONE IS REALLY WAITING RIGHT HERESMALL SEM %s\n", myvessel->name);
+            node->pendSR++;
             sem_wait(&(node->SmallSem));
-            sem_post(&(node->OKq));
             printf("I went through the small sem %s\n", myvessel->name);
             vesselJob(myvessel, node);
         }
@@ -174,6 +176,7 @@ int main(int argc, char *argv[])
             // wait for the medium semaphore
             // wait in the relevant fifo
             printf("SOMEONE IS REALLY WAITING RIGHT med SEM %s\n", myvessel->name);
+            node->pendMR++;
             sem_wait(&(node->MedSem));
             printf("I went through the med sem %s\n", myvessel->name);
             vesselJob(myvessel, node);
@@ -185,6 +188,7 @@ int main(int argc, char *argv[])
             // wait for the large semaphore
             // wait in the relevant 
             printf("SOMEONE IS REALLY WAITING RIGHT large SEM %s\n", myvessel->name);
+            node->pendLR++;
             sem_wait(&(node->LarSem));
             printf("I went through the large sem %s\n", myvessel->name);
             vesselJob(myvessel, node);

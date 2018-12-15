@@ -22,7 +22,7 @@ extern int errno;
 int main(int argc, char *argv[])
 {
     signal(SIGINT, handle_sigint);
-    int shmid = 0, err = 0, vesnum = 0, curves = 0;
+    int shmid, err = 0, vesnum = 0, curves = 0;
     pid_t pidVessel, pidMonitor;
     char conFile[15], buff[50], s1[10], s2[5];
     char monitorParams[30];
@@ -172,16 +172,14 @@ int main(int argc, char *argv[])
     nodeShip->upgraded = NO;
     node->shipToCome = *nodeShip;
     //
-    // PublicLedger *nodeledg = malloc(sizeof(PublicLedger) + sumCa*sizeof(VesselInfo));
-    // node->pubLedger = *nodeledg;
-    // node->pubLedger.SmallVessels = (VesselInfo *) myShared + sizeof(SharedMemory);
-    // node->pubLedger.MediumVessels = (VesselInfo *) myShared + sizeof(SharedMemory);
-    // node->pubLedger.LargeVessels = (VesselInfo *) myShared + sizeof(SharedMemory);
-    node->pubLedger.SmallVessels = (char *)myShared + sizeof(SharedMemory);
-    node->pubLedger.MediumVessels = (char *)myShared + sizeof(SharedMemory);
-    node->pubLedger.LargeVessels = (char *)myShared + sizeof(SharedMemory);
-    // node->pubLedger.MediumVessels = node->pubLedger.SmallVessels + struct_configfile->ca2;
-    // node->pubLedger.LargeVessels = node->pubLedger.MediumVessels + struct_configfile->ca3;
+    node->pubLedger.SmallVessels = (VesselInfo *)((uint8_t *)myShared + sizeof(SharedMemory));
+
+    node->pubLedger.MediumVessels = (VesselInfo *)((uint8_t *)node->pubLedger.SmallVessels + \
+    (struct_configfile->ca2)*sizeof(VesselInfo));
+
+    node->pubLedger.LargeVessels = (VesselInfo *)((uint8_t *)node->pubLedger.MediumVessels + \
+    (struct_configfile->ca3)*sizeof(VesselInfo));
+
     strcpy(node->pubLedger.history , "history.txt");
     for(int i=0;i<struct_configfile->ca1 ; i++){
         node->pubLedger.SmallVessels[i] = *nodeShip;
@@ -196,6 +194,10 @@ int main(int argc, char *argv[])
     node->curcap1 = struct_configfile->ca1;
     node->curcap2 = struct_configfile->ca2;
     node->curcap3 = struct_configfile->ca3;
+    //
+    node->pendSR = 0;
+    node->pendMR = 0;
+    node->pendLR = 0;
     /*  Initialize  the  semaphores. */
 
     if (sem_init(&(node->SmallSem), 1, 0) != 0)
@@ -229,11 +231,6 @@ int main(int argc, char *argv[])
         exit(9);
     }
     if (sem_init(&(node->manDone), 1, 0) != 0)
-    {
-        perror("Couldn’t initialize.");
-        exit(9);
-    }
-    if (sem_init(&(node->OKq), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);

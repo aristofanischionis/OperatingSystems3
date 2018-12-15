@@ -1,4 +1,6 @@
 #include <semaphore.h>
+#include <stdint.h>
+#include <inttypes.h>
 // #define MAX 50
 #define ENTER 0
 #define EXIT 1
@@ -24,6 +26,7 @@ struct Vessel
     float departureTime;
     int status;
     int upgraded;
+    // char pos[4];
 };
 typedef struct Vessel VesselInfo;
 
@@ -61,7 +64,10 @@ struct SharedMemory
     sem_t OKpm;
     sem_t OKves;
     sem_t manDone;
-    sem_t OKq;
+    //
+    int pendSR;
+    int pendMR;
+    int pendLR;
     //
     int curcap1;
     int curcap2;
