@@ -170,6 +170,7 @@ int main(int argc, char *argv[])
     nodeShip->departureTime = 0.0;
     nodeShip->status = 0;
     nodeShip->upgraded = NO;
+    strcpy(nodeShip->pos, "N0");
     node->shipToCome = *nodeShip;
     //
     node->pubLedger.SmallVessels = (VesselInfo *)((uint8_t *)myShared + sizeof(SharedMemory));
@@ -194,6 +195,10 @@ int main(int argc, char *argv[])
     node->curcap1 = struct_configfile->ca1;
     node->curcap2 = struct_configfile->ca2;
     node->curcap3 = struct_configfile->ca3;
+    //
+    node->max1 = struct_configfile->ca1;
+    node->max2 = struct_configfile->ca2;
+    node->max3 = struct_configfile->ca3;
     //
     node->pendSR = 0;
     node->pendMR = 0;

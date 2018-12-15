@@ -13,10 +13,23 @@
 
 extern int errno;
 
-int exiting(SharedMemory *myShared)
+void writePubLed(SharedMemory *myShared)
 {
+    // memcpy(&(myShared->pubLedger.), &(myShared->shipToCome), sizeof(VesselInfo));
+}
+
+void exiting(SharedMemory *myShared)
+{
+    // proceed to exit
+    int res = 0, uped = -1;
+    char tobechecked1, tobechecked2;
+    tobechecked1 = myShared->shipToCome.type;
+    tobechecked2 = myShared->shipToCome.upgrade;
+    uped = myShared->shipToCome.upgraded;
     // VesselInfo *ShipToExit = malloc(sizeof(VesselInfo));
     printf("exiting portmaster \n");
+    // sending ok
+    sem_post(&(myShared->OKpm));
     // memcpy(ShipToExit, &(myShared->shipToCome), sizeof(VesselInfo));
     // wait for it to finish
     // printf("exiting waits for mandone from %s\n", myShared->shipToCome.name);
@@ -25,180 +38,223 @@ int exiting(SharedMemory *myShared)
     //write status to left
     myShared->shipToCome.status = LEFT;
     // free a space for another ship to enter
-    if (myShared->shipToCome.type == 'S')
-    {
-        myShared->curcap1++;
-        return SMALL;
+    if(uped == YES){
+        if(tobechecked2 == 'M'){
+            // it means it has been upgraded to a med
+            myShared->curcap2++;
+            res = MED;
+        }
+        else if(tobechecked2 == 'L'){
+            myShared->curcap3++;
+            res = LARGE;
+        }
     }
-    else if (myShared->shipToCome.type == 'M')
-    {
-        myShared->curcap2++;
-        return MED;
-    }
-    else if (myShared->shipToCome.type == 'L')
-    {
-        myShared->curcap3++;
-        return LARGE;
+    else {
+        if(tobechecked1 == 'S'){
+            myShared->curcap1++;
+            res = SMALL;
+        }
+        else if(tobechecked1 == 'M'){
+            myShared->curcap2++;
+            res = MED;
+        }
+        else if(tobechecked1 == 'L'){
+            myShared->curcap3++;
+            res = LARGE;
+        }
     }
     // write it to public ledger
-    // let someone else to make a request
-    return 0;
+    // check what position is available so that I can place
+    // someone from the waiting queue
+    if (res == SMALL)
+    {
+        // check if someone needs the sem
+        if (myShared->pendSR > 0)
+        {
+            // then someone needs the small sem
+            // so I will give him permission to go ahead
+            // printf("sm exited posting sem bc %d\n", myShared->pendSR);
+            sem_post(&(myShared->SmallSem));
+            sem_wait(&(myShared->manDone));
+            myShared->pendSR--;
+        }
+    }
+    else if (res == MED)
+    {
+        // check if someone needs the sem
+        if (myShared->pendMR > 0)
+        {
+            // then someone needs the med sem
+            // so I will give him permission to go ahead
+            sem_post(&(myShared->MedSem));
+            sem_wait(&(myShared->manDone));
+            myShared->pendMR--;
+        }
+    }
+    else if (res == LARGE)
+    {
+        // check if someone needs the sem
+        if (myShared->pendLR > 0)
+        {
+            // then someone needs the large sem
+            // so I will give him permission to go ahead
+            sem_post(&(myShared->LarSem));
+            sem_wait(&(myShared->manDone));
+            myShared->pendLR--;
+        }
+    }
+    writePubLed(myShared);
 }
 
+void smallPlace(SharedMemory *myShared)
+{
+    printf("There is a small place for me\n");
+    myShared->curcap1--;
+    // all good I will give you the OKpm to move
+    // and give you the OKpm to use the S sem
+    myShared->shipToCome.status = ACCEPTED;
+    int posi = myShared->max1 - myShared->curcap1 - 1;
+    sprintf(myShared->shipToCome.pos, "S%d", posi);
+    printf("My position is %s\n", myShared->shipToCome.pos);
+    // gave him permission to proceed
+    // send the OKpm to read the status
+    sem_post(&(myShared->OKpm));
+    // you are free to move
+    // wait for sleep to finish so that The request will be open for someone else
+    sem_wait(&(myShared->manDone));
+    // going to park
+    // write down the info I want for him
+}
+void medPlace(SharedMemory *myShared, int up)
+{
+    printf("There is a med place for me\n");
+    myShared->curcap2--;
+    // all good I will give you the OKpm to move
+    // and give you the OKpm to use the m sem
+    myShared->shipToCome.status = ACCEPTED;
+    int posi = myShared->max2 - myShared->curcap2 - 1;
+    sprintf(myShared->shipToCome.pos, "M%d", posi);
+    printf("My position is %s\n", myShared->shipToCome.pos);
+    if (up == YES)
+    {
+        myShared->shipToCome.upgraded = YES;
+    }
+    // gave him permission to proceed
+    // send the OKpm to read the status
+    sem_post(&(myShared->OKpm));
+    // you are free to move
+    // wait for sleep to finish so that The request will be open for someone else
+    sem_wait(&(myShared->manDone));
+    // going to park
+    // write down the info I want for him
+}
+void largePlace(SharedMemory *myShared, int up)
+{
+    printf("There is a large place for me\n");
+    myShared->curcap3--;
+    // all good I will give you the OKpm to move
+    // and give you the OKpm to use the m sem
+    myShared->shipToCome.status = ACCEPTED;
+    int posi = myShared->max3 - myShared->curcap3 - 1;
+    sprintf(myShared->shipToCome.pos, "L%d", posi);
+    printf("My position is %s\n", myShared->shipToCome.pos);
+    if (up == YES)
+    {
+        myShared->shipToCome.upgraded = YES;
+    }
+    // gave him permission to proceed
+    // send the OKpm to read the status
+    sem_post(&(myShared->OKpm));
+    // you are free to move
+    // wait for sleep to finish so that The request will be open for someone else
+    sem_wait(&(myShared->manDone));
+    // going to park
+    // write down the info I want for him
+}
+void wait(SharedMemory *myShared)
+{
+    printf("blepw no upgrade SO wait \n");
+    // wait signal
+    myShared->shipToCome.status = WAIT;
+    // send the ok from pm
+    sem_post(&(myShared->OKpm));
+}
 void entry(SharedMemory *myShared)
 {
-    if ((myShared->shipToCome.type == 'S') && (myShared->shipToCome.upgraded == NO))
+    if (myShared->shipToCome.type == 'S')
     {
         if (myShared->curcap1 > 0)
         {
-            printf("There is a small place for me\n");
-            myShared->curcap1--;
-            // all good I will give you the OKpm to move
-            // and give you the OKpm to use the S sem
-            myShared->shipToCome.status = ACCEPTED;
-            // gave him permission to proceed
-            // send the OKpm to read the status
-            sem_post(&(myShared->OKpm));
-            // you are free to move
-            // wait for sleep to finish so that The request will be open for someone else
-            sem_wait(&(myShared->manDone));
-            // going to park
-            // write down the info I want for him
+            smallPlace(myShared);
         }
         else if (myShared->curcap1 == 0)
         {
             printf("blepw capacity =0 gia small, %c \n", myShared->shipToCome.upgrade);
-            if(myShared->shipToCome.upgrade == 'M'){
+            if (myShared->shipToCome.upgrade == 'M')
+            {
                 if (myShared->curcap2 > 0)
                 {
                     printf("blepw med upgrade gia small \n");
-                    myShared->curcap2--;
-                    // all good I will give you the OKpm to move
-                    // and give you the OKpm to use the m sem
-                    myShared->shipToCome.status = ACCEPTED;
-                    // gave him permission to proceed
-                    // change type to M
-                    myShared->shipToCome.type = 'M';
-                    myShared->shipToCome.upgraded = YES;
-                    // send the OKpm to read the status
-                    sem_post(&(myShared->OKpm));
-                    // printf("I just gave the ok pm to s->m %s\n", myShared->shipToCome.name);
-                    // you are free to move
-                    // going to park
-                    sem_wait(&(myShared->manDone));
-                    // write down the info I want for him
+                    medPlace(myShared, YES);
                 }
             }
-            else if(myShared->shipToCome.upgrade == 'L'){
+            else if (myShared->shipToCome.upgrade == 'L')
+            {
                 if (myShared->curcap3 > 0)
                 {
-                    myShared->curcap3--;
-                    // all good I will give you the OKpm to move
-                    // and give you the OKpm to use the m sem
-                    myShared->shipToCome.status = ACCEPTED;
-                    // gave him permission to proceed
-                    // change type to M
-                    myShared->shipToCome.type = 'L';
-                    myShared->shipToCome.upgraded = YES;
-                    // send the OKpm to read the status
-                    sem_post(&(myShared->OKpm));
-                    // you are free to move
-                    // going to park
-                    sem_wait(&(myShared->manDone));
-                    // write down the info I want for him
+                    printf("blepw large upgrade gia small \n");
+                    largePlace(myShared, YES);
                 }
             }
-            else {
+            else
+            {
                 //no upgrade given
-                printf("blepw no upgrade gia small \n");
-                // wait signal
-                myShared->shipToCome.status = WAIT;
-                // send the ok from pm
-                sem_post(&(myShared->OKpm));
+                wait(myShared);
             }
         }
-        // means that this ship is already taken care of
-        // myShared->shipToCome.type = 'N';
     }
-    if ((myShared->shipToCome.type == 'M') && (myShared->shipToCome.upgraded == NO))
+    else if (myShared->shipToCome.type == 'M')
     {
         if (myShared->curcap2 > 0)
         {
-            printf("There is a med place for me\n");
-            myShared->curcap2--;
-            // all good I will give you the OKpm to move
-            // and give you the OKpm to use the m sem
-            myShared->shipToCome.status = ACCEPTED;
-            // gave him permission to proceed
-            // send the OKpm to read the status
-            sem_post(&(myShared->OKpm));
-            // you are free to move
-            // wait for sleep to finish so that The request will be open for someone else
-            sem_wait(&(myShared->manDone));
-            // going to park
-            // write down the info I want for him
+            medPlace(myShared, NO);
         }
         else if (myShared->curcap2 == 0)
         {
-            if(myShared->shipToCome.upgrade == 'L'){
+            if (myShared->shipToCome.upgrade == 'L')
+            {
                 if (myShared->curcap3 > 0)
                 {
-                    myShared->curcap3--;
-                    // all good I will give you the OKpm to move
-                    // and give you the OKpm to use the m sem
-                    myShared->shipToCome.status = ACCEPTED;
-                    // gave him permission to proceed
-                    // change type to M
-                    myShared->shipToCome.type = 'L';
-                    myShared->shipToCome.upgraded = YES;
-                    // send the OKpm to read the status
-                    sem_post(&(myShared->OKpm));
-                    // you are free to move
-                    // going to park
-                    sem_wait(&(myShared->manDone));
-                    // write down the info I want for him
+                    largePlace(myShared, YES);
                 }
             }
-            else {
+            else
+            {
                 //no upgrade given
-                // wait signal
-                myShared->shipToCome.status = WAIT;
-                sem_post(&(myShared->OKpm));
+                wait(myShared);
             }
         }
-        // means that this ship is already taken care of
-        // myShared->shipToCome.type = 'N';
     }
-    if ((myShared->shipToCome.type == 'L') && (myShared->shipToCome.upgraded == NO))
+    else if (myShared->shipToCome.type == 'L')
     {
         if (myShared->curcap3 > 0)
         {
-            printf("There is a large place for me\n");
-            myShared->curcap3--;
-            // all good I will give you the OKpm to move
-            // and give you the OKpm to use the m sem
-            myShared->shipToCome.status = ACCEPTED;
-            // gave him permission to proceed
-            // send the OKpm to read the status
-            sem_post(&(myShared->OKpm));
-            // you are free to move
-            // wait for sleep to finish so that The request will be open for someone else
-            sem_wait(&(myShared->manDone));
-            // going to park
-            // write down the info I want for him
+            largePlace(myShared, NO);
         }
         else if (myShared->curcap3 == 0)
         {
-            // wait signal
-            myShared->shipToCome.status = WAIT;
-            sem_post(&(myShared->OKpm));
+            wait(myShared);
         }
-        // means that this ship is already taken care of
-        // myShared->shipToCome.type = 'N';
     }
+    else {
+        printf("Type of ship is not correct\n");
+    }
+    //
+    writePubLed(myShared);
 }
 
-void handleRequest(SharedMemory *node){
+void handleRequest(SharedMemory *node)
+{
     int res = 0, req = -1;
     sem_post(&(node->Request));
     // wait for someone to put info
@@ -206,50 +262,15 @@ void handleRequest(SharedMemory *node){
     printf("Request status %d, %c, %s\n", node->shipToCome.status, node->shipToCome.type, node->shipToCome.name);
     if (node->shipToCome.status == EXIT)
     {
-        sem_post(&(node->OKpm));
         // proceed to exit
-        res = exiting(node);
-        // check what position is available so that I can place 
-        // someone from the waiting queue
-        if(res == SMALL){
-            // check if someone needs the sem
-            if(node->pendSR > 0){
-                // then someone needs the small sem
-                // so I will give him permission to go ahead
-                // printf("sm exited posting sem bc %d\n", node->pendSR);
-                sem_post(&(node->SmallSem));
-                sem_wait(&(node->manDone));
-                node->pendSR--;
-            }
-        }
-        else if(res == MED){
-            // check if someone needs the sem
-            if(node->pendMR > 0){
-                // then someone needs the med sem
-                // so I will give him permission to go ahead
-                sem_post(&(node->MedSem));
-                sem_wait(&(node->manDone));
-                node->pendMR--;
-            }
-        }
-        else if(res == LARGE){
-            // check if someone needs the sem
-            if(node->pendLR > 0){
-                // then someone needs the large sem
-                // so I will give him permission to go ahead
-                sem_post(&(node->LarSem));
-                sem_wait(&(node->manDone));
-                node->pendLR--;
-            }
-        }
+        exiting(node);
     }
     else if (node->shipToCome.status == ENTER)
-    {
+    { 
         // proceed to entry checks
         entry(node);
     }
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -302,15 +323,15 @@ int main(int argc, char *argv[])
         perror("Attachment.");
         exit(3);
     }
-    SharedMemory *node = (SharedMemory*) myShared; 
+    SharedMemory *node = (SharedMemory *)myShared;
     node->pubLedger.SmallVessels = (VesselInfo *)((uint8_t *)myShared + sizeof(SharedMemory));
-    
-    node->pubLedger.MediumVessels = (VesselInfo *)((uint8_t *)node->pubLedger.SmallVessels + \
-    (node->curcap2)*sizeof(VesselInfo));
 
-    node->pubLedger.LargeVessels = (VesselInfo *)((uint8_t *)node->pubLedger.MediumVessels + \
-    (node->curcap3)*sizeof(VesselInfo));
-    
+    node->pubLedger.MediumVessels = (VesselInfo *)((uint8_t *)node->pubLedger.SmallVessels +
+                                                   (node->curcap2) * sizeof(VesselInfo));
+
+    node->pubLedger.LargeVessels = (VesselInfo *)((uint8_t *)node->pubLedger.MediumVessels +
+                                                  (node->curcap3) * sizeof(VesselInfo));
+
     // a ship can move in the port
     // in charge of port movement sem
     // takes first the port movement sem
@@ -321,9 +342,8 @@ int main(int argc, char *argv[])
         gettimeofday(&t0, NULL);
         handleRequest(node);
         gettimeofday(&t1, NULL);
-        double time_spent = (double) (t1.tv_usec - t0.tv_usec) / 1000000 + (double) (t1.tv_sec - t0.tv_sec);
+        double time_spent = (double)(t1.tv_usec - t0.tv_usec) / 1000000 + (double)(t1.tv_sec - t0.tv_sec);
         printf("time spent on this request is %f\n", time_spent);
-        
     }
     int err;
     err = shmdt((void *)myShared);

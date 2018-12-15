@@ -26,7 +26,7 @@ struct Vessel
     float departureTime;
     int status;
     int upgraded;
-    // char pos[4];
+    char pos[4];
 };
 typedef struct Vessel VesselInfo;
 
@@ -72,6 +72,10 @@ struct SharedMemory
     int curcap1;
     int curcap2;
     int curcap3;
+    //
+    int max1;
+    int max2;
+    int max3;
     // //
     char logfile[20];
     VesselInfo shipToCome;

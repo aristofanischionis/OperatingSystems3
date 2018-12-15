@@ -22,8 +22,10 @@ void vesselJob(VesselInfo *myvessel, SharedMemory *myShared)
     // printf("I am vessel and begin parkperiod");
     // stays in the port
     // printf("I am vessel and begin sleeping parkperiod, %s\n", myvessel->name);
-    sleep(myvessel->parkperiod);
+    sleep((myvessel->parkperiod) / 2);
     // asks how much should I pay?
+    
+    sleep((myvessel->parkperiod) / 2);
     // I now want to exit
     sem_wait(&(myShared->Request));
     printf("I am vessel and sending exit status, %s\n", myvessel->name);
@@ -110,6 +112,7 @@ int main(int argc, char *argv[])
     myvessel->departureTime = 0.0;
     myvessel->status = ENTER;
     myvessel->upgraded = NO;
+    strcpy(myvessel->pos, "N0");
     // attach shared mem
     myShared = (SharedMemory *)shmat(shmid, (void *)0, 0);
     if (myShared == (void *)-1)
