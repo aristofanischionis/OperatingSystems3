@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
     // make log file
     fp1 = fopen("log", "a");
     // make history file
-    fp2 = fopen("history", "a");
+    fp2 = fopen("history.txt", "a");
     // make shared memory
     shmid = shmget(IPC_PRIVATE, sizeof(SharedMemory) + sumCa * sizeof(VesselInfo), IPC_CREAT|IPC_EXCL|0666); /*  Make  shared  memory  segment  */
     if (shmid == (void *)-1)
@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
     node->pubLedger.LargeVessels = (VesselInfo *)((uint8_t *)node->pubLedger.MediumVessels + \
     (struct_configfile->ca3)*sizeof(VesselInfo));
 
-    strcpy(node->pubLedger.history , "history.txt");
+    strcpy(node->pubLedger.historyFile , "history.txt");
     for(int i=0;i<struct_configfile->ca1 ; i++){
         node->pubLedger.SmallVessels[i] = *nodeShip;
     }
@@ -203,6 +203,8 @@ int main(int argc, char *argv[])
     node->pendSR = 0;
     node->pendMR = 0;
     node->pendLR = 0;
+    //
+    node->cost = 0;
     /*  Initialize  the  semaphores. */
 
     if (sem_init(&(node->SmallSem), 1, 0) != 0)

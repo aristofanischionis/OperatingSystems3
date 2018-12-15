@@ -15,7 +15,21 @@ extern int errno;
 
 void writePubLed(SharedMemory *myShared)
 {
-    // memcpy(&(myShared->pubLedger.), &(myShared->shipToCome), sizeof(VesselInfo));
+    int pos;
+    char parkType, tobechecked;
+    tobechecked = myShared->shipToCome.type;
+    sscanf(myShared->shipToCome.pos, "%c%d", parkType, pos);
+    // i will place it in the 
+    // type array
+    if( tobechecked == 'S'){
+        memcpy(&(myShared->pubLedger.SmallVessels[pos]), &(myShared->shipToCome), sizeof(VesselInfo));
+    }
+    else if( tobechecked == 'M'){
+        memcpy(&(myShared->pubLedger.MediumVessels[pos]), &(myShared->shipToCome), sizeof(VesselInfo));
+    }
+    else if( tobechecked == 'L'){
+        memcpy(&(myShared->pubLedger.LargeVessels[pos]), &(myShared->shipToCome), sizeof(VesselInfo));
+    }
 }
 
 void exiting(SharedMemory *myShared)
@@ -64,6 +78,9 @@ void exiting(SharedMemory *myShared)
         }
     }
     // write it to public ledger
+    // WARNING A PLACE WILL OPEN WHICH IS NOT THE LAST AND ON THIS POS 
+    // THE ENTER WILL PLACE THE NEW VES
+    writePubLed(myShared);
     // check what position is available so that I can place
     // someone from the waiting queue
     if (res == SMALL)
