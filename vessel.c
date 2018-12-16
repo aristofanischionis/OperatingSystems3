@@ -10,41 +10,38 @@
 #include "myheader.h"
 
 extern int errno;
+struct timeval t0;
 
 int calcCost(VesselInfo *myvessel, SharedMemory *myShared){
     // how much each type of ship will pay per hour
-    struct timeval t2;
+    struct timeval t3;
     int co1, co2, co3; 
     int curCost = 0;
     co1 = myShared->co1;
     co2 = myShared->co2;
     co3 = myShared->co3;
     //
-    double time_in = 0.0;
-    gettimeofday(&t2, NULL);
-    printf("-----------> %f\n", (double)(t2.tv_sec/ 100000000));
-    printf("-----------> %f\n", myvessel->arrivalTime);
-    time_in = (double)((t2.tv_sec/ 100000000) - myvessel->arrivalTime);
-    printf("I calced %f time \n", time_in);
+    double time_in = 0.0, time_now;
+    gettimeofday(&t3, NULL);
+    time_now = (double)(t3.tv_usec - t0.tv_usec) / 1000000 + (double)(t3.tv_sec - t0.tv_sec);
+    time_in = time_now - myvessel->arrivalTime;
+    printf("I calced %f time and time now -> %f \n", time_in, time_now);
     if(myvessel->parktype == SMALL){
-        return (int)(time_in * co1);
-        
+        return (int)((time_in * co1) / 30);
     }
     else if(myvessel->parktype == MED){
-        return (int)(time_in * co2);
+        return (int)((time_in * co2) / 30);
     }
     else if(myvessel->parktype == LARGE){
-        return (int)(time_in * co3);
+        return (int)((time_in * co3) / 30);
     }
     return -1;
 }
 
 void vesselJob(VesselInfo *myvessel, SharedMemory *myShared)
 {
-    struct timeval t0, t1;
+    struct timeval t2;
     int curCost = 0;
-    //place timer
-    gettimeofday(&t0, NULL);
     // change the parktype
     myvessel->parktype = myShared->shipToCome.parktype;
     strcpy(myvessel->pos, myShared->shipToCome.pos);
@@ -66,10 +63,11 @@ void vesselJob(VesselInfo *myvessel, SharedMemory *myShared)
     // I now want to exit
     sem_wait(&(myShared->Request));
     printf("I am vessel and sending exit status, %s\n", myvessel->name);
-    gettimeofday(&t1, NULL);
-    double time_spent = (double)(t1.tv_usec - t0.tv_usec) / 1000000 + (double)(t1.tv_sec - t0.tv_sec);
+    gettimeofday(&t2, NULL);
+    double time_spent = (double)(t2.tv_usec - t0.tv_usec) / 1000000 + (double)(t2.tv_sec - t0.tv_sec);
     printf("VESSEL departure TIME %s,  %f\n",myvessel->name , time_spent);
-    myvessel->departureTime = time_spent + myvessel->arrivalTime;
+    // time from beginning of vessel till now is the departure time
+    myvessel->departureTime = time_spent; 
     myvessel->status = EXIT;
     memcpy(&(myShared->shipToCome), myvessel, sizeof(VesselInfo));
     sem_post(&(myShared->OKves));
@@ -88,7 +86,7 @@ int main(int argc, char *argv[])
 {
     printf("this is a vessel %d\n", argc);
     int shmid;
-    struct timeval t0, t1;
+    struct timeval t1;
     VesselInfo *myvessel;
     SharedMemory *myShared;
     if (argc != 11)
