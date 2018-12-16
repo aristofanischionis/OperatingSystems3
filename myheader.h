@@ -11,21 +11,23 @@
 #define SMALL 5
 #define MED 6
 #define LARGE 7
+#define INIT 8
+
 //
-#define YES 8
-#define NO 9
+#define YES 9
+#define NO 10
 
 struct Vessel
 {
     char name[20];
     char type;
     char upgrade;
+    int parktype;
     int parkperiod;
     int mantime;
-    float arrivalTime;
-    float departureTime;
+    double arrivalTime;
+    double departureTime;
     int status;
-    int upgraded;
     int cost;
     char pos[4];
 };
@@ -48,19 +50,27 @@ typedef struct configfile configfile;
 struct history
 {
     char vesselname[20];
-    char parktype;
+    int parktype;
     int cost;
-    float time_in;
-    float time_out;
+    double time_in;
+    double time_out;
 };
 typedef struct history history;
+
+struct CurrentState {
+    char vesselname[20];
+    char type;
+    int occupied; // Yes No
+    double time_in;
+};
+typedef struct CurrentState CurrentState;
 
 struct PublicLedger {
     // current state of the port
     // arrays with positions as many as the capacity of the port ca1,ca2,ca3
-    VesselInfo *SmallVessels;
-    VesselInfo *MediumVessels;
-    VesselInfo *LargeVessels;
+    CurrentState *SmallVessels;
+    CurrentState *MediumVessels;
+    CurrentState *LargeVessels;
     char historyFile[20]; // name of history file to open for append
 };
 typedef struct PublicLedger PublicLedger;
@@ -88,6 +98,11 @@ struct SharedMemory
     int max2;
     int max3;
     // //
+    int co1;
+    int co2;
+    int co3;
+    //
+    int totalIncome;
     char logfile[20];
     VesselInfo shipToCome;
     PublicLedger pubLedger;

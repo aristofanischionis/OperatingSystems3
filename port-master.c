@@ -13,74 +13,77 @@
 
 extern int errno;
 
-void writePubLed(SharedMemory *myShared)
-{
-    int pos;
-    char parkType, tobechecked;
-    tobechecked = myShared->shipToCome.type;
-    sscanf(myShared->shipToCome.pos, "%c%d", parkType, pos);
-    // i will place it in the 
-    // type array
-    if( tobechecked == 'S'){
-        memcpy(&(myShared->pubLedger.SmallVessels[pos]), &(myShared->shipToCome), sizeof(VesselInfo));
-    }
-    else if( tobechecked == 'M'){
-        memcpy(&(myShared->pubLedger.MediumVessels[pos]), &(myShared->shipToCome), sizeof(VesselInfo));
-    }
-    else if( tobechecked == 'L'){
-        memcpy(&(myShared->pubLedger.LargeVessels[pos]), &(myShared->shipToCome), sizeof(VesselInfo));
-    }
-}
-
 void exiting(SharedMemory *myShared)
 {
     // proceed to exit
-    int res = 0, uped = -1;
-    char tobechecked1, tobechecked2;
-    tobechecked1 = myShared->shipToCome.type;
-    tobechecked2 = myShared->shipToCome.upgrade;
-    uped = myShared->shipToCome.upgraded;
-    // VesselInfo *ShipToExit = malloc(sizeof(VesselInfo));
-    printf("exiting portmaster \n");
+    int res = 0, parked = 0, max = 0;
+    parked = myShared->shipToCome.parktype;
+    char nameofVes[20];
+    strcpy(nameofVes, myShared->shipToCome.name);
+    printf("exiting portmaster %d\n", parked);
     // sending ok
     sem_post(&(myShared->OKpm));
-    // memcpy(ShipToExit, &(myShared->shipToCome), sizeof(VesselInfo));
     // wait for it to finish
-    // printf("exiting waits for mandone from %s\n", myShared->shipToCome.name);
     sem_wait(&(myShared->manDone));
-    // printf("exiting took mandone\n");
     //write status to left
     myShared->shipToCome.status = LEFT;
     // free a space for another ship to enter
-    if(uped == YES){
-        if(tobechecked2 == 'M'){
-            // it means it has been upgraded to a med
-            myShared->curcap2++;
-            res = MED;
-        }
-        else if(tobechecked2 == 'L'){
-            myShared->curcap3++;
-            res = LARGE;
-        }
-    }
-    else {
-        if(tobechecked1 == 'S'){
-            myShared->curcap1++;
-            res = SMALL;
-        }
-        else if(tobechecked1 == 'M'){
-            myShared->curcap2++;
-            res = MED;
-        }
-        else if(tobechecked1 == 'L'){
-            myShared->curcap3++;
-            res = LARGE;
+    if (parked == SMALL)
+    {
+        myShared->curcap1++;
+        res = SMALL;
+        max = myShared->max1;
+        // say that the pos is now not occupied
+        //I have to find the name on the current state
+        for (int i = 0; i < max; i++)
+        {
+            if (!strcmp(myShared->pubLedger.SmallVessels[i].vesselname, nameofVes))
+            {
+                // I found it
+                printf("EXITING S, %s\n", myShared->pubLedger.SmallVessels[i].vesselname);
+                myShared->pubLedger.SmallVessels[i].occupied = NO;
+                break;
+            }
         }
     }
+    else if (parked == MED)
+    {
+        myShared->curcap2++;
+        res = MED;
+        max = myShared->max2;
+        // say that the pos is now not occupied
+        //I have to find the name on the current state
+        for (int i = 0; i < max; i++)
+        {
+            if (!strcmp(myShared->pubLedger.MediumVessels[i].vesselname, nameofVes))
+            {
+                // I found it
+                printf("EXITING M, %s\n", myShared->pubLedger.MediumVessels[i].vesselname);
+                myShared->pubLedger.MediumVessels[i].occupied = NO;
+                break;
+            }
+        }
+    }
+    else if (parked == LARGE)
+    {
+        myShared->curcap3++;
+        res = LARGE;
+        max = myShared->max3;
+        // say that the pos is now not occupied
+        //I have to find the name on the current state
+        for (int i = 0; i < max; i++)
+        {
+            if (!strcmp(myShared->pubLedger.LargeVessels[i].vesselname, nameofVes))
+            {
+                // I found it
+                printf("EXITING L, %s\n", myShared->pubLedger.LargeVessels[i].vesselname);
+                myShared->pubLedger.LargeVessels[i].occupied = NO;
+                break;
+            }
+        }
+    }
+
     // write it to public ledger
-    // WARNING A PLACE WILL OPEN WHICH IS NOT THE LAST AND ON THIS POS 
-    // THE ENTER WILL PLACE THE NEW VES
-    writePubLed(myShared);
     // check what position is available so that I can place
     // someone from the waiting queue
     if (res == SMALL)
@@ -90,7 +93,7 @@ void exiting(SharedMemory *myShared)
         {
             // then someone needs the small sem
             // so I will give him permission to go ahead
-            // printf("sm exited posting sem bc %d\n", myShared->pendSR);
+            printf("sm exited posting sem bc %d\n", myShared->pendSR);
             sem_post(&(myShared->SmallSem));
             sem_wait(&(myShared->manDone));
             myShared->pendSR--;
@@ -120,7 +123,51 @@ void exiting(SharedMemory *myShared)
             myShared->pendLR--;
         }
     }
-    writePubLed(myShared);
+    // writePubLed(myShared);
+}
+
+int findPosition(SharedMemory *myShared)
+{
+    int topark = myShared->shipToCome.parktype; // where is it going to actually park
+    CurrentState *myvessels = malloc(sizeof(CurrentState));
+    int max = 0;
+
+    if (topark == SMALL)
+    {
+        max = myShared->max1;
+        myvessels = myShared->pubLedger.SmallVessels;
+    }
+    else if (topark == MED)
+    {
+        max = myShared->max2;
+        myvessels = myShared->pubLedger.MediumVessels;
+    }
+    else if (topark == LARGE)
+    {
+        max = myShared->max3;
+        myvessels = myShared->pubLedger.LargeVessels;
+    }
+    else
+    {
+        printf("Something went wrong at findPosition %d\n", topark);
+        return -1;
+    }
+    for (int i = 0; i < max; i++)
+    {
+        printf("prin to no %d\n", myvessels[i].occupied);
+        if (myvessels[i].occupied == NO)
+        {
+            // I found the first free place to park that's great
+            // let's write it down to public ledger
+            myvessels[i].occupied = YES;
+            myvessels[i].time_in = myShared->shipToCome.arrivalTime;
+            myvessels[i].type = myShared->shipToCome.type;
+            strcpy(myvessels[i].vesselname, myShared->shipToCome.name);
+            return i;
+        }
+    }
+    free(myvessels);
+    return -2;
 }
 
 void smallPlace(SharedMemory *myShared)
@@ -130,7 +177,9 @@ void smallPlace(SharedMemory *myShared)
     // all good I will give you the OKpm to move
     // and give you the OKpm to use the S sem
     myShared->shipToCome.status = ACCEPTED;
-    int posi = myShared->max1 - myShared->curcap1 - 1;
+    myShared->shipToCome.parktype = SMALL;
+    int posi = findPosition(myShared);
+    // int posi = myShared->max1 - myShared->curcap1 - 1;
     sprintf(myShared->shipToCome.pos, "S%d", posi);
     printf("My position is %s\n", myShared->shipToCome.pos);
     // gave him permission to proceed
@@ -142,6 +191,7 @@ void smallPlace(SharedMemory *myShared)
     // going to park
     // write down the info I want for him
 }
+
 void medPlace(SharedMemory *myShared, int up)
 {
     printf("There is a med place for me\n");
@@ -149,12 +199,14 @@ void medPlace(SharedMemory *myShared, int up)
     // all good I will give you the OKpm to move
     // and give you the OKpm to use the m sem
     myShared->shipToCome.status = ACCEPTED;
-    int posi = myShared->max2 - myShared->curcap2 - 1;
+    myShared->shipToCome.parktype = MED;
+    // int posi = myShared->max2 - myShared->curcap2 - 1;
+    int posi = findPosition(myShared);
     sprintf(myShared->shipToCome.pos, "M%d", posi);
     printf("My position is %s\n", myShared->shipToCome.pos);
     if (up == YES)
     {
-        myShared->shipToCome.upgraded = YES;
+        myShared->shipToCome.parktype = MED;
     }
     // gave him permission to proceed
     // send the OKpm to read the status
@@ -165,6 +217,7 @@ void medPlace(SharedMemory *myShared, int up)
     // going to park
     // write down the info I want for him
 }
+
 void largePlace(SharedMemory *myShared, int up)
 {
     printf("There is a large place for me\n");
@@ -172,12 +225,14 @@ void largePlace(SharedMemory *myShared, int up)
     // all good I will give you the OKpm to move
     // and give you the OKpm to use the m sem
     myShared->shipToCome.status = ACCEPTED;
-    int posi = myShared->max3 - myShared->curcap3 - 1;
+    myShared->shipToCome.parktype = LARGE;
+    int posi = findPosition(myShared);
+    // int posi = myShared->max3 - myShared->curcap3 - 1;
     sprintf(myShared->shipToCome.pos, "L%d", posi);
     printf("My position is %s\n", myShared->shipToCome.pos);
     if (up == YES)
     {
-        myShared->shipToCome.upgraded = YES;
+        myShared->shipToCome.parktype = LARGE;
     }
     // gave him permission to proceed
     // send the OKpm to read the status
@@ -188,6 +243,7 @@ void largePlace(SharedMemory *myShared, int up)
     // going to park
     // write down the info I want for him
 }
+
 void wait(SharedMemory *myShared)
 {
     printf("blepw no upgrade SO wait \n");
@@ -196,6 +252,7 @@ void wait(SharedMemory *myShared)
     // send the ok from pm
     sem_post(&(myShared->OKpm));
 }
+
 void entry(SharedMemory *myShared)
 {
     if (myShared->shipToCome.type == 'S')
@@ -263,29 +320,30 @@ void entry(SharedMemory *myShared)
             wait(myShared);
         }
     }
-    else {
+    else
+    {
         printf("Type of ship is not correct\n");
     }
     //
-    writePubLed(myShared);
+    // writePubLed(myShared);
 }
 
-void handleRequest(SharedMemory *node)
+void handleRequest(SharedMemory *myShared)
 {
     int res = 0, req = -1;
-    sem_post(&(node->Request));
+    sem_post(&(myShared->Request));
     // wait for someone to put info
-    sem_wait(&(node->OKves));
-    printf("Request status %d, %c, %s\n", node->shipToCome.status, node->shipToCome.type, node->shipToCome.name);
-    if (node->shipToCome.status == EXIT)
+    sem_wait(&(myShared->OKves));
+    printf("Request status %d, %c, %s\n", myShared->shipToCome.status, myShared->shipToCome.type, myShared->shipToCome.name);
+    if (myShared->shipToCome.status == EXIT)
     {
         // proceed to exit
-        exiting(node);
+        exiting(myShared);
     }
-    else if (node->shipToCome.status == ENTER)
-    { 
+    else if (myShared->shipToCome.status == ENTER)
+    {
         // proceed to entry checks
-        entry(node);
+        entry(myShared);
     }
 }
 
@@ -340,14 +398,13 @@ int main(int argc, char *argv[])
         perror("Attachment.");
         exit(3);
     }
-    SharedMemory *node = (SharedMemory *)myShared;
-    node->pubLedger.SmallVessels = (VesselInfo *)((uint8_t *)myShared + sizeof(SharedMemory));
+    myShared->pubLedger.SmallVessels = (CurrentState *)((uint8_t *)myShared + sizeof(SharedMemory));
 
-    node->pubLedger.MediumVessels = (VesselInfo *)((uint8_t *)node->pubLedger.SmallVessels +
-                                                   (node->curcap2) * sizeof(VesselInfo));
+    myShared->pubLedger.MediumVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.SmallVessels +
+                                                         (myShared->max2) * sizeof(CurrentState));
 
-    node->pubLedger.LargeVessels = (VesselInfo *)((uint8_t *)node->pubLedger.MediumVessels +
-                                                  (node->curcap3) * sizeof(VesselInfo));
+    myShared->pubLedger.LargeVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.MediumVessels +
+                                                        (myShared->max3) * sizeof(CurrentState));
 
     // a ship can move in the port
     // in charge of port movement sem
@@ -357,7 +414,7 @@ int main(int argc, char *argv[])
     {
         //place timer
         gettimeofday(&t0, NULL);
-        handleRequest(node);
+        handleRequest(myShared);
         gettimeofday(&t1, NULL);
         double time_spent = (double)(t1.tv_usec - t0.tv_usec) / 1000000 + (double)(t1.tv_sec - t0.tv_sec);
         printf("time spent on this request is %f\n", time_spent);

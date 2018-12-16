@@ -1,2 +1,5 @@
 # OperatingSystems3
-Begin the assignment
+Progress made.
+I have to fix cost,
+write in files with flock fsyc etc, history logging
+make monitor

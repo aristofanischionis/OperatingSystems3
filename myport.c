@@ -159,7 +159,6 @@ int main(int argc, char *argv[])
     }
     
     // inittialize myShared
-    SharedMemory *node = (SharedMemory*) myShared;
     VesselInfo *nodeShip = malloc(sizeof(VesselInfo));
     strcpy(nodeShip->name , "noname");
     nodeShip->type = 'N';
@@ -168,83 +167,98 @@ int main(int argc, char *argv[])
     nodeShip->mantime = 0;
     nodeShip->arrivalTime = 0.0;
     nodeShip->departureTime = 0.0;
-    nodeShip->status = 0;
-    nodeShip->upgraded = NO;
+    // initialize with LEFT so to indicate it's free for someone to park
+    nodeShip->status = LEFT; 
+    nodeShip->cost = 0;
+    nodeShip->parktype = NO;
     strcpy(nodeShip->pos, "N0");
-    node->shipToCome = *nodeShip;
+    myShared->shipToCome = *nodeShip;
     //
-    node->pubLedger.SmallVessels = (VesselInfo *)((uint8_t *)myShared + sizeof(SharedMemory));
+    myShared->pubLedger.SmallVessels = (CurrentState *)((uint8_t *)myShared + sizeof(SharedMemory));
 
-    node->pubLedger.MediumVessels = (VesselInfo *)((uint8_t *)node->pubLedger.SmallVessels + \
-    (struct_configfile->ca2)*sizeof(VesselInfo));
+    myShared->pubLedger.MediumVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.SmallVessels + \
+    (struct_configfile->ca2)*sizeof(CurrentState));
 
-    node->pubLedger.LargeVessels = (VesselInfo *)((uint8_t *)node->pubLedger.MediumVessels + \
-    (struct_configfile->ca3)*sizeof(VesselInfo));
+    myShared->pubLedger.LargeVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.MediumVessels + \
+    (struct_configfile->ca3)*sizeof(CurrentState));
 
-    strcpy(node->pubLedger.historyFile , "history.txt");
+    strcpy(myShared->pubLedger.historyFile , "history.txt");
+    //
+    CurrentState defaultState;
+    defaultState.occupied = NO;
+    defaultState.time_in = 0.0;
+    defaultState.type = 'N';
+    strcpy(defaultState.vesselname, "noname");
+    //
     for(int i=0;i<struct_configfile->ca1 ; i++){
-        node->pubLedger.SmallVessels[i] = *nodeShip;
+        memcpy(&(myShared->pubLedger.SmallVessels[i]), &(defaultState), sizeof(CurrentState));
     }
     for(int i=0;i<struct_configfile->ca2 ; i++){
-        node->pubLedger.MediumVessels[i] = *nodeShip;
+        // myShared->pubLedger.MediumVessels[i] = *defaultState;
+        memcpy(&(myShared->pubLedger.MediumVessels[i]), &(defaultState), sizeof(CurrentState));
     }
     for(int i=0;i<struct_configfile->ca3 ; i++){
-        node->pubLedger.LargeVessels[i] = *nodeShip;
+        // myShared->pubLedger.LargeVessels[i] = *defaultState;
+        memcpy(&(myShared->pubLedger.LargeVessels[i]), &(defaultState), sizeof(CurrentState));
     }
     //
-    node->curcap1 = struct_configfile->ca1;
-    node->curcap2 = struct_configfile->ca2;
-    node->curcap3 = struct_configfile->ca3;
+    myShared->curcap1 = struct_configfile->ca1;
+    myShared->curcap2 = struct_configfile->ca2;
+    myShared->curcap3 = struct_configfile->ca3;
     //
-    node->max1 = struct_configfile->ca1;
-    node->max2 = struct_configfile->ca2;
-    node->max3 = struct_configfile->ca3;
+    myShared->max1 = struct_configfile->ca1;
+    myShared->max2 = struct_configfile->ca2;
+    myShared->max3 = struct_configfile->ca3;
     //
-    node->pendSR = 0;
-    node->pendMR = 0;
-    node->pendLR = 0;
+    myShared->pendSR = 0;
+    myShared->pendMR = 0;
+    myShared->pendLR = 0;
     //
-    node->cost = 0;
+    myShared->co1 = struct_configfile->co1;
+    myShared->co2 = struct_configfile->co2;
+    myShared->co3 = struct_configfile->co3;
+    //
+    myShared->totalIncome = 0;
     /*  Initialize  the  semaphores. */
 
-    if (sem_init(&(node->SmallSem), 1, 0) != 0)
+    if (sem_init(&(myShared->SmallSem), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
-    if (sem_init(&(node->MedSem), 1, 0) != 0)
+    if (sem_init(&(myShared->MedSem), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
-    if (sem_init(&(node->LarSem), 1, 0) != 0)
+    if (sem_init(&(myShared->LarSem), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
-    if (sem_init(&(node->Request), 1, 0) != 0)
+    if (sem_init(&(myShared->Request), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
-    if (sem_init(&(node->OKpm), 1, 0) != 0)
+    if (sem_init(&(myShared->OKpm), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
-    if (sem_init(&(node->OKves), 1, 0) != 0)
+    if (sem_init(&(myShared->OKves), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
-    if (sem_init(&(node->manDone), 1, 0) != 0)
+    if (sem_init(&(myShared->manDone), 1, 0) != 0)
     {
         perror("Couldn’t initialize.");
         exit(9);
     }
     //    
     //
-    strcpy(node->logfile, "log");
+    strcpy(myShared->logfile, "log");
     //
     // exec all programs
     // make sure you fork and exec your childern and then wait for them to finish
