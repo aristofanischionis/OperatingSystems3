@@ -25,7 +25,6 @@ int calcCost(VesselInfo *myvessel, SharedMemory *myShared){
     gettimeofday(&t3, NULL);
     time_now = (double)(t3.tv_usec - t0.tv_usec) / 1000000 + (double)(t3.tv_sec - t0.tv_sec);
     time_in = time_now - myvessel->arrivalTime;
-    printf("I calced %f time and time now -> %f \n", time_in, time_now);
     if(myvessel->parktype == SMALL){
         return (int)((time_in * co1) / 30);
     }
@@ -45,10 +44,6 @@ void vesselJob(VesselInfo *myvessel, SharedMemory *myShared)
     // change the parktype
     myvessel->parktype = myShared->shipToCome.parktype;
     strcpy(myvessel->pos, myShared->shipToCome.pos);
-    // int pos;
-    // char type;
-    // sscanf(myShared->shipToCome.pos, "%c%d", type, pos);
-    // wait for being able to move in the port
     // moving in the port in order to park
     printf("I am vessel and begin sleeping mantime, %s\n", myvessel->name);
     sleep(myvessel->mantime);
@@ -68,7 +63,13 @@ void vesselJob(VesselInfo *myvessel, SharedMemory *myShared)
     printf("VESSEL departure TIME %s,  %f\n",myvessel->name , time_spent);
     // time from beginning of vessel till now is the departure time
     myvessel->departureTime = time_spent; 
+    //
+    // update myvessel cost with the right cost
+    myvessel->cost = calcCost(myvessel, myShared);
+    printf("I am %s ves and I will totally pay %d\n", myvessel->name, myvessel->cost);
+    //
     myvessel->status = EXIT;
+    // write the shiptocome
     memcpy(&(myShared->shipToCome), myvessel, sizeof(VesselInfo));
     sem_post(&(myShared->OKves));
     // wait port-master to read from shm
@@ -158,13 +159,6 @@ int main(int argc, char *argv[])
         perror("Attachment.");
         exit(3);
     }
-    // myShared->pubLedger.SmallVessels = (CurrentState *)((uint8_t *)myShared + sizeof(SharedMemory));
-
-    // myShared->pubLedger.MediumVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.SmallVessels + \
-    // (myShared->max2)*sizeof(CurrentState));
-
-    // myShared->pubLedger.LargeVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.MediumVessels + \
-    // (myShared->max3)*sizeof(CurrentState));
     // begin doing stuff
     // ask for entry putting info in the shm
     

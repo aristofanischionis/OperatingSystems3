@@ -50,7 +50,7 @@ typedef struct configfile configfile;
 struct history
 {
     char vesselname[20];
-    int parktype;
+    char parktype[10];
     int cost;
     double time_in;
     double time_out;
