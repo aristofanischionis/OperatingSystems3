@@ -13,6 +13,52 @@
 #include "myheader.h"
 
 extern int errno;
+void entry(SharedMemory *);
+
+void checkSemQueues(SharedMemory *myShared, int res){
+    if (res == SMALL)
+    {
+        // check if someone needs the sem
+        if (myShared->pendSR > 0)
+        {
+            // then someone needs the small sem
+            // so I will give him permission to go ahead
+            // printf("sm exited posting sem bc %d\n", myShared->pendSR);
+            sem_post(&(myShared->SmallSem));
+            // wait for the vessel to put it's info in the shiptocome var
+            sem_wait(&(myShared->OKves));
+            entry(myShared);
+            myShared->pendSR--;
+        }
+    }
+    else if (res == MED)
+    {
+        // check if someone needs the sem
+        if (myShared->pendMR > 0)
+        {
+
+            // then someone needs the med sem
+            // so I will give him permission to go ahead
+            sem_post(&(myShared->MedSem));
+            sem_wait(&(myShared->OKves));
+            entry(myShared);
+            myShared->pendMR--;
+        }
+    }
+    else if (res == LARGE)
+    {
+        // check if someone needs the sem
+        if (myShared->pendLR > 0)
+        {
+            // then someone needs the large sem
+            // so I will give him permission to go ahead
+            sem_post(&(myShared->LarSem));
+            sem_wait(&(myShared->OKves));
+            entry(myShared);
+            myShared->pendLR--;
+        }
+    }
+}
 
 void writeHistory(SharedMemory *myShared){
     // write shiptocome to history at exit
@@ -53,7 +99,7 @@ void writeHistory(SharedMemory *myShared){
     //
     flock(fd, LOCK_EX);
     // writing to file
-    fprintf(fp, "%s\t%s\t%f\t%f\t%f\t%f\t%d\n", vesselname, parktype, reqEntry, time_in, reqExit, time_out, cost);
+    fprintf(fp, "%s\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%d\n", vesselname, parktype, reqEntry, time_in, reqExit, time_out, cost);
     fflush(fp);
     //
     fsync(fd);
@@ -73,6 +119,9 @@ void exiting(SharedMemory *myShared)
     // wait for it to finish
     printf("exiting posted\n");
     // put sem_gget value to identify the value and fix the problem
+    int req;
+    sem_getvalue(&(myShared->manDone), &req);
+    printf("sem get value-----------> %d", req);
     sem_wait(&(myShared->manDone));
     printf("exiting wait mandoen\n");
     //write status to left
@@ -133,6 +182,10 @@ void exiting(SharedMemory *myShared)
             }
         }
     }
+    else {
+        printf("parked is not recognized \n");
+        return ;
+    }
     // write it to history
     // add the cost to total income
     myShared->totalIncome += myShared->shipToCome.cost;
@@ -140,43 +193,8 @@ void exiting(SharedMemory *myShared)
     writeHistory(myShared);
     // check what position is available so that I can place
     // someone from the waiting queue
-    if (res == SMALL)
-    {
-        // check if someone needs the sem
-        if (myShared->pendSR > 0)
-        {
-            // then someone needs the small sem
-            // so I will give him permission to go ahead
-            // printf("sm exited posting sem bc %d\n", myShared->pendSR);
-            sem_post(&(myShared->SmallSem));
-            sem_wait(&(myShared->manDone));
-            myShared->pendSR--;
-        }
-    }
-    else if (res == MED)
-    {
-        // check if someone needs the sem
-        if (myShared->pendMR > 0)
-        {
-            // then someone needs the med sem
-            // so I will give him permission to go ahead
-            sem_post(&(myShared->MedSem));
-            sem_wait(&(myShared->manDone));
-            myShared->pendMR--;
-        }
-    }
-    else if (res == LARGE)
-    {
-        // check if someone needs the sem
-        if (myShared->pendLR > 0)
-        {
-            // then someone needs the large sem
-            // so I will give him permission to go ahead
-            sem_post(&(myShared->LarSem));
-            sem_wait(&(myShared->manDone));
-            myShared->pendLR--;
-        }
-    }
+    checkSemQueues(myShared, res);
+    
 }
 
 int findPosition(SharedMemory *myShared)
@@ -494,7 +512,7 @@ int main(int argc, char *argv[])
         handleRequest(myShared);
         gettimeofday(&t1, NULL);
         double time_spent = (double)(t1.tv_usec - t0.tv_usec) / 1000000 + (double)(t1.tv_sec - t0.tv_sec);
-        printf("time spent on this request is %f\n", time_spent);
+        printf("time spent on this request is %.2f\n", time_spent);
     }
     int err;
     err = shmdt((void *)myShared);

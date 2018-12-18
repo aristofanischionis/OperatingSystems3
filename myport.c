@@ -140,13 +140,15 @@ int main(int argc, char *argv[])
     // find all the capacity
     int sumCa = struct_configfile->ca1 + struct_configfile->ca2 + struct_configfile->ca3 +1;
     // make log file
-    fp1 = fopen("log.txt", "a");
+    fp1 = fopen("log.txt", "w");
     fprintf(fp1, "------------------------------------BEGIN------------------------------------\n");
+    fflush(fp1);
     fclose(fp1);
     // make history file
-    fp2 = fopen("history.txt", "a");
+    fp2 = fopen("history.txt", "w");
     fprintf(fp2, "------------------------------------BEGIN------------------------------------\n");
-    fprintf(fp2, "Vessel\tParked\tReqEntry\tArrival\tReqExit\tDeparture\tCost\n");
+    fprintf(fp2, "Vessel\t\tParked\t\tReqEntry\t\tArrival\t\tReqExit\t\tDeparture\t\tCost\n");
+    fflush(fp2);
     fclose(fp2);
     // make shared memory
     shmid = shmget(IPC_PRIVATE, sizeof(SharedMemory) + sumCa * sizeof(VesselInfo), IPC_CREAT|IPC_EXCL|0666); /*  Make  shared  memory  segment  */
@@ -365,12 +367,12 @@ int main(int argc, char *argv[])
 
     fp1 = fopen("log.txt", "a");
     fprintf(fp1, "------------------------------------END------------------------------------\n");
+    fflush(fp1);
     fclose(fp1);
     fp2 = fopen("history.txt", "a");
     fprintf(fp2, "------------------------------------END------------------------------------\n");
+    fflush(fp2);
     fclose(fp2);
-    // fclose(fp);
-    // fclose(fp1);
-    // fclose(fp2);
+    
     return 0;
 }
