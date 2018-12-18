@@ -14,14 +14,17 @@ extern int errno;
 
 void currentPort(SharedMemory *myShared)
 {
+    // if you enable these lines monitor is going to work
+    // but the whole other project won't because monitor 
+    // will take up all the resources and lock the other processes
     // myShared->pubLedger.SmallVessels = (CurrentState *)((uint8_t *)myShared + sizeof(SharedMemory));
 
-    // myShared->pubLedger.MediumVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.SmallVessels + \
-    // (myShared->max2)*sizeof(CurrentState));
+    // myShared->pubLedger.MediumVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.SmallVessels +
+    //                                                      (myShared->max2) * sizeof(CurrentState));
 
-    // myShared->pubLedger.LargeVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.MediumVessels + \
-    // (myShared->max3)*sizeof(CurrentState));
-    printf("this is current port");
+    // myShared->pubLedger.LargeVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.MediumVessels +
+    //                                                     (myShared->max3) * sizeof(CurrentState));
+
     FILE *fp;
     int max1, max2, max3, i, fd;
     char origType[10];
@@ -34,20 +37,18 @@ void currentPort(SharedMemory *myShared)
         fprintf(stderr, "\nError opening file logfile\n");
         exit(1);
     }
-    fd = fileno(fp);
-    flock(fd, LOCK_EX);
-    // for small
+    
     for (i = 0; i < max1; i++)
     {
         if (myShared->pubLedger.SmallVessels[i].occupied == YES)
         {
             fprintf(fp, "S%d\t%s\t%c\t%.2f\n", i, myShared->pubLedger.SmallVessels[i].vesselname, myShared->pubLedger.SmallVessels[i].type, myShared->pubLedger.SmallVessels[i].time_in);
-            fflush(fp);
+            // fflush(fp);
         }
         else
         {
             fprintf(fp, "S%d\tEMPTY\tEMPTY\tEMPTY\t\n", i);
-            fflush(fp);
+            // fflush(fp);
         }
     }
     //
@@ -56,12 +57,12 @@ void currentPort(SharedMemory *myShared)
         if (myShared->pubLedger.MediumVessels[i].occupied == YES)
         {
             fprintf(fp, "M%d\t%s\t%c\t%.2f\n", i, myShared->pubLedger.MediumVessels[i].vesselname, myShared->pubLedger.MediumVessels[i].type, myShared->pubLedger.MediumVessels[i].time_in);
-            fflush(fp);
+            // fflush(fp);
         }
         else
         {
             fprintf(fp, "M%d\tEMPTY\tEMPTY\tEMPTY\t\n", i);
-            fflush(fp);
+            // fflush(fp);
         }
     }
     //
@@ -70,16 +71,15 @@ void currentPort(SharedMemory *myShared)
         if (myShared->pubLedger.LargeVessels[i].occupied == YES)
         {
             fprintf(fp, "L%d\t%s\t%c\t%.2f\n", i, myShared->pubLedger.LargeVessels[i].vesselname, myShared->pubLedger.LargeVessels[i].type, myShared->pubLedger.LargeVessels[i].time_in);
-            fflush(fp);
+            // fflush(fp);
         }
         else
         {
             fprintf(fp, "L%d\tEMPTY\tEMPTY\tEMPTY\t\n", i);
-            fflush(fp);
+            // fflush(fp);
         }
     }
-    fsync(fd); // syncrhonize with permanent storage (disk)
-    flock(fd, LOCK_UN);
+    
     fclose(fp);
 }
 
@@ -93,13 +93,16 @@ double average(double array[], int num){
 
 void calcStatistics(SharedMemory *myShared)
 {
+    // if you enable these lines monitor is going to work
+    // but the whole other project won't because monitor 
+    // will take up all the resources and lock the other processes
     // myShared->pubLedger.SmallVessels = (CurrentState *)((uint8_t *)myShared + sizeof(SharedMemory));
 
-    // myShared->pubLedger.MediumVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.SmallVessels + \
-    // (myShared->max2)*sizeof(CurrentState));
+    // myShared->pubLedger.MediumVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.SmallVessels +
+    //                                                      (myShared->max2) * sizeof(CurrentState));
 
-    // myShared->pubLedger.LargeVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.MediumVessels + \
-    // (myShared->max3)*sizeof(CurrentState));
+    // myShared->pubLedger.LargeVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.MediumVessels +
+    //                                                     (myShared->max3) * sizeof(CurrentState));
 
     // waiting time
     // I will only check history file
@@ -208,13 +211,6 @@ int main(int argc, char *argv[])
         perror("Attachment.");
         exit(3);
     }
-    // myShared->pubLedger.SmallVessels = (CurrentState *)((uint8_t *)myShared + sizeof(SharedMemory));
-
-    // myShared->pubLedger.MediumVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.SmallVessels + \
-    // (myShared->max2)*sizeof(CurrentState));
-
-    // myShared->pubLedger.LargeVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.MediumVessels + \
-    // (myShared->max3)*sizeof(CurrentState));
     // begin doing stuff
 
     fp = fopen("monitor.txt", "w");
