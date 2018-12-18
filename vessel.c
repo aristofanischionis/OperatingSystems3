@@ -213,13 +213,6 @@ int main(int argc, char *argv[])
         perror("Attachment.");
         exit(3);
     }
-    // myShared->pubLedger.SmallVessels = (CurrentState *)((uint8_t *)myShared + sizeof(SharedMemory));
-
-    // myShared->pubLedger.MediumVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.SmallVessels + \
-    // (myShared->max2)*sizeof(CurrentState));
-
-    // myShared->pubLedger.LargeVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.MediumVessels + \
-    // (myShared->max3)*sizeof(CurrentState));
     // begin doing stuff
     // ask for entry putting info in the shm
     sprintf(buffer, "%s requested entry in the port\n", myvessel->name);

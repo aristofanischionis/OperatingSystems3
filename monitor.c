@@ -14,6 +14,14 @@ extern int errno;
 
 void currentPort(SharedMemory *myShared)
 {
+    myShared->pubLedger.SmallVessels = (CurrentState *)((uint8_t *)myShared + sizeof(SharedMemory));
+
+    myShared->pubLedger.MediumVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.SmallVessels + \
+    (myShared->max2)*sizeof(CurrentState));
+
+    myShared->pubLedger.LargeVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.MediumVessels + \
+    (myShared->max3)*sizeof(CurrentState));
+
     FILE *fp;
     int max1, max2, max3, i, fd;
     char origType[10];
@@ -85,6 +93,14 @@ double average(double array[], int num){
 
 void calcStatistics(SharedMemory *myShared)
 {
+    myShared->pubLedger.SmallVessels = (CurrentState *)((uint8_t *)myShared + sizeof(SharedMemory));
+
+    myShared->pubLedger.MediumVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.SmallVessels + \
+    (myShared->max2)*sizeof(CurrentState));
+
+    myShared->pubLedger.LargeVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.MediumVessels + \
+    (myShared->max3)*sizeof(CurrentState));
+
     // waiting time
     // I will only check history file
     // char *
@@ -109,7 +125,7 @@ void calcStatistics(SharedMemory *myShared)
             lines++;
         }
     }
-    printf("lines in history %d\n", lines);
+    // printf("lines in history %d\n", lines);
     fflush(stdout);
     if(lines <= 2){
         return ;
@@ -191,14 +207,7 @@ int main(int argc, char *argv[])
         perror("Attachment.");
         exit(3);
     }
-    // myShared->pubLedger.SmallVessels = (CurrentState *)((uint8_t *)myShared + sizeof(SharedMemory));
-
-    // myShared->pubLedger.MediumVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.SmallVessels + \
-    // (myShared->max2)*sizeof(CurrentState));
-
-    // myShared->pubLedger.LargeVessels = (CurrentState *)((uint8_t *)myShared->pubLedger.MediumVessels + \
-    // (myShared->max3)*sizeof(CurrentState));
-
+    
     // begin doing stuff
 
     fp = fopen("monitor.txt", "w");

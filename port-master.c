@@ -122,6 +122,7 @@ void exiting(SharedMemory *myShared)
     int req;
     sem_getvalue(&(myShared->manDone), &req);
     printf("sem get value-----------> %d", req);
+    fflush(stdout);
     sem_wait(&(myShared->manDone));
     printf("exiting wait mandoen\n");
     //write status to left
