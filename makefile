@@ -23,4 +23,4 @@ port-master : port-master.o myheader.h
 
 # clean house
 clean:
-	rm -f $(OUT) $(OBJS)
+	rm -f $(OUT) $(OBJS) log.txt history.txt monitor.txt

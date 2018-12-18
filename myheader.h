@@ -19,7 +19,7 @@
 
 struct Vessel
 {
-    char name[20];
+    char name[30];
     char type;
     char upgrade;
     int parktype;
@@ -27,6 +27,8 @@ struct Vessel
     int mantime;
     double arrivalTime;
     double departureTime;
+    double reqEntry;
+    double reqExit;
     int status;
     int cost;
     char pos[4];
@@ -49,16 +51,18 @@ typedef struct configfile configfile;
 
 struct history
 {
-    char vesselname[20];
+    char vesselname[30];
     char parktype[10];
     int cost;
     double time_in;
     double time_out;
+    double reqEntry;
+    double reqExit;
 };
 typedef struct history history;
 
 struct CurrentState {
-    char vesselname[20];
+    char vesselname[30];
     char type;
     int occupied; // Yes No
     double time_in;

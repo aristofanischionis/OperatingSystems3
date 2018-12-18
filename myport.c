@@ -9,12 +9,13 @@
 #include <sys/wait.h> 
 #include "myheader.h"
 
-pid_t pidPM;
+pid_t pidPM, pidMonitor;
 
 void handle_sigint(int sig) 
 { 
     signal(SIGINT, handle_sigint);
-    printf("Caught signal for port-master termination\n");
+    printf("Caught signal for program termination\n");
+    kill(sig, pidMonitor);
     kill(sig, pidPM);
 }
 extern int errno;
@@ -23,7 +24,7 @@ int main(int argc, char *argv[])
 {
     signal(SIGINT, handle_sigint);
     int shmid, err = 0, vesnum = 0, curves = 0;
-    pid_t pidVessel, pidMonitor;
+    pid_t pidVessel;
     char conFile[15], buff[50], s1[10], s2[5];
     char monitorParams[30];
     FILE *fp, *fp1, *fp2;
@@ -135,12 +136,18 @@ int main(int argc, char *argv[])
             return 4;
         }
     }
+    fclose(fp);
     // find all the capacity
     int sumCa = struct_configfile->ca1 + struct_configfile->ca2 + struct_configfile->ca3 +1;
     // make log file
-    fp1 = fopen("log", "a");
+    fp1 = fopen("log.txt", "a");
+    fprintf(fp1, "------------------------------------BEGIN------------------------------------\n");
+    fclose(fp1);
     // make history file
     fp2 = fopen("history.txt", "a");
+    fprintf(fp2, "------------------------------------BEGIN------------------------------------\n");
+    fprintf(fp2, "Vessel\tParked\tReqEntry\tArrival\tReqExit\tDeparture\tCost\n");
+    fclose(fp2);
     // make shared memory
     shmid = shmget(IPC_PRIVATE, sizeof(SharedMemory) + sumCa * sizeof(VesselInfo), IPC_CREAT|IPC_EXCL|0666); /*  Make  shared  memory  segment  */
     if (shmid == (void *)-1)
@@ -167,6 +174,8 @@ int main(int argc, char *argv[])
     nodeShip->mantime = 0;
     nodeShip->arrivalTime = 0.0;
     nodeShip->departureTime = 0.0;
+    nodeShip->reqEntry = 0.0;
+    nodeShip->reqExit = 0.0;
     // initialize with LEFT so to indicate it's free for someone to park
     nodeShip->status = LEFT; 
     nodeShip->cost = 0;
@@ -258,7 +267,7 @@ int main(int argc, char *argv[])
     }
     //    
     //
-    strcpy(myShared->logfile, "log");
+    strcpy(myShared->logfile, "log.txt");
     //
     // exec all programs
     // make sure you fork and exec your childern and then wait for them to finish
@@ -354,8 +363,14 @@ int main(int argc, char *argv[])
     if (err == -1) perror("Removal.");
     else printf("Removed Shared Memory.\n");
 
-    fclose(fp);
+    fp1 = fopen("log.txt", "a");
+    fprintf(fp1, "------------------------------------END------------------------------------\n");
     fclose(fp1);
+    fp2 = fopen("history.txt", "a");
+    fprintf(fp2, "------------------------------------END------------------------------------\n");
     fclose(fp2);
+    // fclose(fp);
+    // fclose(fp1);
+    // fclose(fp2);
     return 0;
 }

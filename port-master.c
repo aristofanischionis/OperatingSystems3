@@ -9,59 +9,72 @@
 #include <string.h>
 #include <sys/shm.h>
 #include <sys/time.h>
+#include <sys/file.h>
 #include "myheader.h"
 
 extern int errno;
 
-void writePubLed(SharedMemory *myShared){
+void writeHistory(SharedMemory *myShared){
     // write shiptocome to history at exit
     // open history file appending and write the history struct record
     FILE *fp;
-    history hisToWrite;
+    int fd;
+    int cost;
+    double time_in, time_out, reqEntry, reqExit;
+    char vesselname[20], parktype[10];
     fp = fopen(myShared->pubLedger.historyFile, "a");
     if (fp == NULL) 
     { 
         fprintf(stderr, "\nError opening file historyFile\n"); 
         exit (1); 
     }
+    fd = fileno(fp);
     //
     printf("----------------------------------------->\n");
-    hisToWrite.cost = myShared->shipToCome.cost;
+    cost = myShared->shipToCome.cost;
     switch(myShared->shipToCome.parktype){
         case SMALL :
-            strcpy(hisToWrite.parktype, "Small");
+            strcpy(parktype, "Small");
         break;
         case MED :
-            strcpy(hisToWrite.parktype, "Medium");
+            strcpy(parktype, "Medium");
         break;
         case LARGE :
-            strcpy(hisToWrite.parktype, "Large");
+            strcpy(parktype, "Large");
         break;
         default :
             printf("Something went wrong\n");
     }
-    hisToWrite.time_in = myShared->shipToCome.arrivalTime;
-    hisToWrite.time_out = myShared->shipToCome.departureTime;
-    strcpy(hisToWrite.vesselname, myShared->shipToCome.name);
-    // writing to file
-    fprintf(fp, "%s %s %f %f %d\n", hisToWrite.vesselname, hisToWrite.parktype, hisToWrite.time_in,
-                    hisToWrite.time_out, hisToWrite.cost);
+    time_in = myShared->shipToCome.arrivalTime;
+    time_out = myShared->shipToCome.departureTime;
+    reqEntry = myShared->shipToCome.reqEntry;
+    reqExit = myShared->shipToCome.reqExit;
+    strcpy(vesselname, myShared->shipToCome.name);
     //
+    flock(fd, LOCK_EX);
+    // writing to file
+    fprintf(fp, "%s\t%s\t%f\t%f\t%f\t%f\t%d\n", vesselname, parktype, reqEntry, time_in, reqExit, time_out, cost);
+    fflush(fp);
+    //
+    fsync(fd);
+    flock(fd, LOCK_UN);
     fclose(fp);
 }
 
 void exiting(SharedMemory *myShared)
-{
-    // proceed to exit
+{   // proceed to exit
     int res = 0, parked = 0, max = 0;
     parked = myShared->shipToCome.parktype;
-    char nameofVes[20];
+    char nameofVes[30];
     strcpy(nameofVes, myShared->shipToCome.name);
-    printf("exiting portmaster %d\n", parked);
+    printf("exiting portmaster %s, %d\n",nameofVes, parked);
     // sending ok
     sem_post(&(myShared->OKpm));
     // wait for it to finish
+    printf("exiting posted\n");
+    // put sem_gget value to identify the value and fix the problem
     sem_wait(&(myShared->manDone));
+    printf("exiting wait mandoen\n");
     //write status to left
     myShared->shipToCome.status = LEFT;
     // free a space for another ship to enter
@@ -120,9 +133,11 @@ void exiting(SharedMemory *myShared)
             }
         }
     }
-
-    // write it to public ledger
-    writePubLed(myShared);
+    // write it to history
+    // add the cost to total income
+    myShared->totalIncome += myShared->shipToCome.cost;
+    printf("Total income just became %d\n", myShared->totalIncome);
+    writeHistory(myShared);
     // check what position is available so that I can place
     // someone from the waiting queue
     if (res == SMALL)
@@ -132,7 +147,7 @@ void exiting(SharedMemory *myShared)
         {
             // then someone needs the small sem
             // so I will give him permission to go ahead
-            printf("sm exited posting sem bc %d\n", myShared->pendSR);
+            // printf("sm exited posting sem bc %d\n", myShared->pendSR);
             sem_post(&(myShared->SmallSem));
             sem_wait(&(myShared->manDone));
             myShared->pendSR--;
@@ -234,7 +249,7 @@ int findPosition(SharedMemory *myShared)
 
 void smallPlace(SharedMemory *myShared)
 {
-    printf("There is a small place for me\n");
+    // printf("There is a small place for me\n");
     myShared->curcap1--;
     // all good I will give you the OKpm to move
     // and give you the OKpm to use the S sem
@@ -243,7 +258,7 @@ void smallPlace(SharedMemory *myShared)
     int posi = findPosition(myShared);
     // int posi = myShared->max1 - myShared->curcap1 - 1;
     sprintf(myShared->shipToCome.pos, "S%d", posi);
-    printf("My position is %s\n", myShared->shipToCome.pos);
+    // printf("My position is %s\n", myShared->shipToCome.pos);
     // gave him permission to proceed
     // send the OKpm to read the status
     sem_post(&(myShared->OKpm));
@@ -256,7 +271,7 @@ void smallPlace(SharedMemory *myShared)
 
 void medPlace(SharedMemory *myShared, int up)
 {
-    printf("There is a med place for me\n");
+    // printf("There is a med place for me\n");
     myShared->curcap2--;
     // all good I will give you the OKpm to move
     // and give you the OKpm to use the m sem
@@ -265,7 +280,7 @@ void medPlace(SharedMemory *myShared, int up)
     // int posi = myShared->max2 - myShared->curcap2 - 1;
     int posi = findPosition(myShared);
     sprintf(myShared->shipToCome.pos, "M%d", posi);
-    printf("My position is %s\n", myShared->shipToCome.pos);
+    // printf("My position is %s\n", myShared->shipToCome.pos);
     if (up == YES)
     {
         myShared->shipToCome.parktype = MED;
@@ -282,7 +297,7 @@ void medPlace(SharedMemory *myShared, int up)
 
 void largePlace(SharedMemory *myShared, int up)
 {
-    printf("There is a large place for me\n");
+    // printf("There is a large place for me\n");
     myShared->curcap3--;
     // all good I will give you the OKpm to move
     // and give you the OKpm to use the m sem
@@ -291,7 +306,7 @@ void largePlace(SharedMemory *myShared, int up)
     int posi = findPosition(myShared);
     // int posi = myShared->max3 - myShared->curcap3 - 1;
     sprintf(myShared->shipToCome.pos, "L%d", posi);
-    printf("My position is %s\n", myShared->shipToCome.pos);
+    // printf("My position is %s\n", myShared->shipToCome.pos);
     if (up == YES)
     {
         myShared->shipToCome.parktype = LARGE;
@@ -308,7 +323,7 @@ void largePlace(SharedMemory *myShared, int up)
 
 void wait(SharedMemory *myShared)
 {
-    printf("no upgrade SO wait \n");
+    // printf("no upgrade SO wait \n");
     // wait signal
     myShared->shipToCome.status = WAIT;
     // send the ok from pm
@@ -325,12 +340,12 @@ void entry(SharedMemory *myShared)
         }
         else if (myShared->curcap1 == 0)
         {
-            printf("blepw capacity =0 gia small, %c \n", myShared->shipToCome.upgrade);
+            // printf("blepw capacity =0 gia small, %c \n", myShared->shipToCome.upgrade);
             if (myShared->shipToCome.upgrade == 'M')
             {
                 if (myShared->curcap2 > 0)
                 {
-                    printf("blepw med upgrade gia small \n");
+                    // printf("blepw med upgrade gia small \n");
                     medPlace(myShared, YES);
                 }
             }
@@ -338,7 +353,7 @@ void entry(SharedMemory *myShared)
             {
                 if (myShared->curcap3 > 0)
                 {
-                    printf("blepw large upgrade gia small \n");
+                    // printf("blepw large upgrade gia small \n");
                     largePlace(myShared, YES);
                 }
             }
@@ -387,7 +402,7 @@ void entry(SharedMemory *myShared)
         printf("Type of ship is not correct\n");
     }
     //
-    // writePubLed(myShared);
+    // writeHistory(myShared);
 }
 
 void handleRequest(SharedMemory *myShared)
@@ -411,7 +426,7 @@ void handleRequest(SharedMemory *myShared)
 
 int main(int argc, char *argv[])
 {
-    printf("hi im port master %d\n", argc);
+    // printf("hi im port master %d\n", argc);
     struct timeval t0, t1;
     int shmid, req = 0;
     char chargesFile[20];
