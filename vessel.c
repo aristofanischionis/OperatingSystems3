@@ -126,10 +126,9 @@ void vesselJob(VesselInfo *myvessel, SharedMemory *myShared)
     sem_wait(&(myShared->OKpm));
     // wait till you can leave port
     // time to move from port
-    printf("I am sleeping for %d\n", myvessel->mantime);
+    // printf("I am sleeping for %d\n", myvessel->mantime);
     sleep(myvessel->mantime);
     //let the others know I 'm done using the port
-    printf("I am posting man done");
     sem_post(&(myShared->manDone));
     return;
 }
@@ -318,8 +317,6 @@ int main(int argc, char *argv[])
             else printf("Waiting sem din't get in after a small ship exited");
         }
     }
-    printf("--------------<> status %d, %c, %s\n", myShared->shipToCome.status, myShared->shipToCome.type, myShared->shipToCome.pos);
-    fflush(stdout);
     // ask for movement in the port
     // ask for the semaphores according to its type and place info in the shm
     sprintf(buffer, "%s is now exiting\n", myvessel->name);

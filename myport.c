@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
     // make history file
     fp2 = fopen("history.txt", "w");
     fprintf(fp2, "------------------------------------BEGIN------------------------------------\n");
-    fprintf(fp2, "Vessel\t\tParked\t\tReqEntry\t\tArrival\t\tReqExit\t\tDeparture\t\tCost\n");
+    fprintf(fp2, "Vessel Parked ReqEntry Arrival ReqExit Departure Cost\n");
     fflush(fp2);
     fclose(fp2);
     // make shared memory
@@ -335,6 +335,7 @@ int main(int argc, char *argv[])
         }
         else{
             // wait(NULL);
+            sleep(3);
             continue;
         }
     }

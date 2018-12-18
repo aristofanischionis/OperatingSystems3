@@ -113,18 +113,11 @@ void exiting(SharedMemory *myShared)
     parked = myShared->shipToCome.parktype;
     char nameofVes[30];
     strcpy(nameofVes, myShared->shipToCome.name);
-    printf("exiting portmaster %s, %d\n",nameofVes, parked);
+    // printf("exiting portmaster %s, %d\n",nameofVes, parked);
     // sending ok
     sem_post(&(myShared->OKpm));
     // wait for it to finish
-    printf("exiting posted\n");
-    // put sem_gget value to identify the value and fix the problem
-    int req;
-    sem_getvalue(&(myShared->manDone), &req);
-    printf("sem get value-----------> %d", req);
-    fflush(stdout);
     sem_wait(&(myShared->manDone));
-    printf("exiting wait mandoen\n");
     //write status to left
     myShared->shipToCome.status = LEFT;
     // free a space for another ship to enter
@@ -140,7 +133,7 @@ void exiting(SharedMemory *myShared)
             if (!strcmp(myShared->pubLedger.SmallVessels[i].vesselname, nameofVes))
             {
                 // I found it
-                printf("EXITING S, %s\n", myShared->pubLedger.SmallVessels[i].vesselname);
+                // printf("EXITING S, %s\n", myShared->pubLedger.SmallVessels[i].vesselname);
                 // clear all of the fields of publedger
                 myShared->pubLedger.SmallVessels[i].occupied = NO;
                 break;
@@ -159,7 +152,7 @@ void exiting(SharedMemory *myShared)
             if (!strcmp(myShared->pubLedger.MediumVessels[i].vesselname, nameofVes))
             {
                 // I found it
-                printf("EXITING M, %s\n", myShared->pubLedger.MediumVessels[i].vesselname);
+                // printf("EXITING M, %s\n", myShared->pubLedger.MediumVessels[i].vesselname);
                 myShared->pubLedger.MediumVessels[i].occupied = NO;
                 break;
             }
@@ -177,7 +170,7 @@ void exiting(SharedMemory *myShared)
             if (!strcmp(myShared->pubLedger.LargeVessels[i].vesselname, nameofVes))
             {
                 // I found it
-                printf("EXITING L, %s\n", myShared->pubLedger.LargeVessels[i].vesselname);
+                // printf("EXITING L, %s\n", myShared->pubLedger.LargeVessels[i].vesselname);
                 myShared->pubLedger.LargeVessels[i].occupied = NO;
                 break;
             }
@@ -288,7 +281,7 @@ void smallPlace(SharedMemory *myShared)
     // write down the info I want for him
 }
 
-void medPlace(SharedMemory *myShared, int up)
+void medPlace(SharedMemory *myShared)
 {
     // printf("There is a med place for me\n");
     myShared->curcap2--;
@@ -299,11 +292,6 @@ void medPlace(SharedMemory *myShared, int up)
     // int posi = myShared->max2 - myShared->curcap2 - 1;
     int posi = findPosition(myShared);
     sprintf(myShared->shipToCome.pos, "M%d", posi);
-    // printf("My position is %s\n", myShared->shipToCome.pos);
-    if (up == YES)
-    {
-        myShared->shipToCome.parktype = MED;
-    }
     // gave him permission to proceed
     // send the OKpm to read the status
     sem_post(&(myShared->OKpm));
@@ -314,7 +302,7 @@ void medPlace(SharedMemory *myShared, int up)
     // write down the info I want for him
 }
 
-void largePlace(SharedMemory *myShared, int up)
+void largePlace(SharedMemory *myShared)
 {
     // printf("There is a large place for me\n");
     myShared->curcap3--;
@@ -325,11 +313,6 @@ void largePlace(SharedMemory *myShared, int up)
     int posi = findPosition(myShared);
     // int posi = myShared->max3 - myShared->curcap3 - 1;
     sprintf(myShared->shipToCome.pos, "L%d", posi);
-    // printf("My position is %s\n", myShared->shipToCome.pos);
-    if (up == YES)
-    {
-        myShared->shipToCome.parktype = LARGE;
-    }
     // gave him permission to proceed
     // send the OKpm to read the status
     sem_post(&(myShared->OKpm));
@@ -365,7 +348,7 @@ void entry(SharedMemory *myShared)
                 if (myShared->curcap2 > 0)
                 {
                     // printf("blepw med upgrade gia small \n");
-                    medPlace(myShared, YES);
+                    medPlace(myShared);
                 }
             }
             else if (myShared->shipToCome.upgrade == 'L')
@@ -373,7 +356,7 @@ void entry(SharedMemory *myShared)
                 if (myShared->curcap3 > 0)
                 {
                     // printf("blepw large upgrade gia small \n");
-                    largePlace(myShared, YES);
+                    largePlace(myShared);
                 }
             }
             else
@@ -387,7 +370,7 @@ void entry(SharedMemory *myShared)
     {
         if (myShared->curcap2 > 0)
         {
-            medPlace(myShared, NO);
+            medPlace(myShared);
         }
         else if (myShared->curcap2 == 0)
         {
@@ -395,7 +378,7 @@ void entry(SharedMemory *myShared)
             {
                 if (myShared->curcap3 > 0)
                 {
-                    largePlace(myShared, YES);
+                    largePlace(myShared);
                 }
             }
             else
@@ -409,7 +392,7 @@ void entry(SharedMemory *myShared)
     {
         if (myShared->curcap3 > 0)
         {
-            largePlace(myShared, NO);
+            largePlace(myShared);
         }
         else if (myShared->curcap3 == 0)
         {
